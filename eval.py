@@ -15,17 +15,17 @@ def eval_net(net, dataset, gpu=True):
         #
         # img = torch.from_numpy(img).unsqueeze(0)
         # true_mask = torch.from_numpy(true_mask).unsqueeze(0)
-
+        img = b['image']
+        true_mask = b['mask']
         if gpu:
             img = img.cuda()
-            true_mask = true_mask.cuda()
+            true_mask = true_mask.cuda().to(torch.float32)
 
         mask_pred = net(img)[0]
-        mask_pred = (torch.sigmoid(mask_pred) > 0.5).float()
+        mask_pred = (torch.sigmoid(mask_pred) > 0.5).to(torch.float32)
 
         tot += dice_coeff(mask_pred, true_mask).item()
     return tot / i
-
 
 # def evaluate(net, dataloader, device):
 #     net.eval()

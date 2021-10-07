@@ -1,3 +1,5 @@
+import os.path
+
 import torch.backends.cudnn as cudnn
 from torch import optim
 
@@ -8,11 +10,13 @@ from utils import *
 import matplotlib.pyplot as plt
 import time
 
+import wandb
+
 
 def train_net(net,
               epochs=5,
               batch_size=1,
-              lr=1e-2,
+              lr=1e-5,
               val_percent=0.05,
               save_cp=True,
               gpu=False,
@@ -28,8 +32,29 @@ def train_net(net,
     train_set, val_set = random_split(dataset, [n_train, n_val], generator=torch.Generator().manual_seed(0))
 
     loader_args = dict(batch_size=batch_size, num_workers=4, pin_memory=True)
+    loader_args2 = dict(batch_size=1, num_workers=4, pin_memory=True)
     train_loader = DataLoader(train_set, shuffle=True, **loader_args)
-    val_loader = DataLoader(val_set, shuffle=False, drop_last=True, **loader_args)
+    val_loader = DataLoader(val_set, shuffle=False, drop_last=True, **loader_args2)
+
+    experiment = wandb.init(project='Total(RRU-Net)', resume='allow', anonymous='must')
+    experiment.name = '''
+        Starting training:
+            Epochs: {}
+            Batch size: {}
+            Learning rate: {}
+            Training size: {}
+            Validation size: {}
+            Checkpoints: {}
+            CUDA: {}
+        '''.format(epochs,
+                   batch_size,
+                   lr,
+                   n_train,
+                   n_val,
+                   str(save_cp),
+                   str(gpu))
+    experiment.config.update(dict(epochs=epochs, batch_size=batch_size, learning_rate=lr,
+                                  val_percent=val_percent, resize=(300, 300), checkpoints=save_cp, gpu=gpu))
     print('''
     Starting training:
         Epochs: {}
@@ -48,15 +73,17 @@ def train_net(net,
                str(gpu)))
 
     # n_train = len(iddataset['train'])
-    optimizer = optim.Adam(net.parameters(),
-                           lr=lr,
-                           weight_decay=0)
+    # optimizer = optim.Adam(net.parameters(),
+    #                        lr=lr,
+    #                        weight_decay=0)
+    optimizer = optim.RMSprop(net.parameters(), lr=lr, weight_decay=1e-8, momentum=0.9)
     criterion = nn.BCELoss()
 
     Train_loss = []
     Valida_dice = []
     EPOCH = []
 
+    global_step = 0
     for epoch in range(epochs):
         net.train()
 
@@ -70,6 +97,7 @@ def train_net(net,
 
         # for i, b in enumerate(batch(train, batch_size)):
         for i, b in enumerate(train_loader):
+            global_step += 1
             start_batch = time.time()
             # imgs = np.array([i[0] for i in b]).astype(np.float32)
             # true_masks = np.array([i[1] for i in b]).astype(np.float32) / 255.
@@ -87,8 +115,8 @@ def train_net(net,
 
             masks_pred = net(imgs)
             masks_probs = torch.sigmoid(masks_pred)
-            masks_probs_flat = masks_probs.view(-1)
-            true_masks_flat = true_masks.view(-1)
+            masks_probs_flat = masks_probs.view(-1).to(torch.float32)
+            true_masks_flat = true_masks.view(-1).to(torch.float32)
             loss = criterion(masks_probs_flat, true_masks_flat)
 
             print('{:.4f} --- loss: {:.4f}, {:.3f}s'.format(i * batch_size / n_train, loss, time.time() - start_batch))
@@ -98,6 +126,14 @@ def train_net(net,
             loss.backward()
             optimizer.step()
 
+            experiment.log({
+                'train loss': loss.item(),
+                'step': global_step,
+                'epoch': epoch
+            })
+
+
+
         print('Epoch finished ! Loss: {:.4f}'.format(epoch_loss / i))
 
         # validate the performance of the model
@@ -105,6 +141,17 @@ def train_net(net,
 
         val_dice = eval_net(net, val_loader, gpu)
         print('Validation Dice Coeff: {:.4f}'.format(val_dice))
+        experiment.log({
+            'learning rate': optimizer.param_groups[0]['lr'],
+            'validation Dice': val_dice,
+            # 'images': wandb.Image(images[0].cpu()),
+            # 'masks': {
+            #     'true': wandb.Image(true_masks[0].float().cpu()),
+            #     'pred': wandb.Image(torch.softmax(masks_pred, dim=1)[0].float().cpu()),
+            # },
+            'step': global_step,
+            'epoch': epoch,
+        })
 
         Train_loss.append(epoch_loss / i)
         Valida_dice.append(val_dice)
@@ -121,14 +168,15 @@ def train_net(net,
         plt.legend(handles=[l1, l2], labels=['Tra_loss', 'Val_dice'], loc='best')
         plt.savefig(dir_logs + 'Training Process for lr-{}.png'.format(lr), dpi=600)
 
-        torch.save(net.state_dict(),
-                   dir_logs + '{}-[val_dice]-{:.4f}-[train_loss]-{:.4f}.pkl'.format(dataset, val_dice, epoch_loss / i))
+        # torch.save(net.state_dict(),
+        #            dir_logs + '{}-[val_dice]-{:.4f}-[train_loss]-{:.4f}.pkl'.format(dataset, val_dice, epoch_loss / i))
+        torch.save(net.state_dict(), dir_logs + 'checkpoint_epoch{}.pth'.format(epoch + 1))
         print('Spend time: {:.3f}s'.format(time.time() - start_epoch))
         print()
 
 
 if __name__ == '__main__':
-    epochs, batchsize, scale, gpu = 50, 6, 1, False
+    epochs, batchsize, scale, gpu = 50, 6, 1, True
     lr = 1e-3
     ft = False
     dataset = 'Total'
@@ -139,10 +187,15 @@ if __name__ == '__main__':
 
     # dir_img = './data/data_{}/train/tam/'.format(dataset)
     # dir_mask = './data/data_{}/train/mask/'.format(dataset)
-    dir_img = '/media/ian/WD/datasets/total_forge/train_and_test/train/images'
-    dir_mask = '/media/ian/WD/datasets/total_forge/train_and_test/train/masks'
-    dir_logs = './result/logs/{}/{}/'.format(dataset, model)
-
+    # dir_img = '/media/ian/WD/datasets/total_forge/train_and_test/train/images'
+    # dir_mask = '/media/ian/WD/datasets/total_forge/train_and_test/train/masks'
+    dir_img = r'E:\data\train_and_test\train_and_test\train\images'
+    dir_mask = r'E:\data\train_and_test\train_and_test\train\masks'
+    # dir_img = r'E:\data\train_and_test\train_and_test\test\images'
+    # dir_mask = r'E:\data\train_and_test\train_and_test\test\masks'
+    dir_logs = '.\\result\\logs\\{}\{}\\'.format(dataset, model)
+    if not os.path.exists(dir_logs):
+        os.makedirs(dir_logs)
     if model == 'Unet':
         net = Unet(n_channels=3, n_classes=1)
     elif model == 'Res_Unet':
