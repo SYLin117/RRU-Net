@@ -48,7 +48,7 @@ def mask_to_image(mask):
 
 
 if __name__ == "__main__":
-    scale, mask_threshold, cpu,  viz, no_save = 1, 0.5, False, False, False
+    scale, mask_threshold, cpu, viz, no_save = 1, 0.5, False, False, False
     # model: 'Unet', 'Res_Unet', 'Ringed_Res_Unet'
     network = 'Ringed_Res_Unet'
 
@@ -76,9 +76,9 @@ if __name__ == "__main__":
                        out_threshold=mask_threshold,
                        use_gpu=not cpu)
 
-    if viz:
-        print("Visualizing results for image {}, close to continue ...".format(j))
-        plot_img_and_mask(img, mask)
+    # if viz:
+    #     print("Visualizing results for image {}, close to continue ...".format(j))
+    #     plot_img_and_mask(img, mask)
 
     if not no_save:
         result = mask_to_image(mask)

@@ -8,7 +8,10 @@ from .utils import resize_and_crop, get_square, normalize, hwc_to_chw
 
 
 def get_ids(dir):
-    """Returns a list of the ids in the directory"""
+    """
+    Returns a list of the ids in the directory
+    get filename without ext
+    """
     # get rid of data format (for example: abandon.jpg)
     return (f[:-4] for f in os.listdir(dir))
 
@@ -39,6 +42,8 @@ def get_imgs_and_masks(ids, dir_img, dir_mask, scale, dataset):
         format = 'jpg'
     elif dataset == 'COLUMB':
         format = 'jpg'
+    else:
+        format = 'jpg'
 
     imgs = to_cropped_imgs(ids, dir_img, '.{}'.format(format), scale)
 
@@ -49,7 +54,6 @@ def get_imgs_and_masks(ids, dir_img, dir_mask, scale, dataset):
     masks = to_cropped_imgs(ids, dir_mask, '_mask.png', scale)
 
     return zip(imgs_normalized, masks)
-
 
 # def get_full_img_and_mask(id, dir_img, dir_mask):
 #     im = Image.open(dir_img + id + '.jpg')
