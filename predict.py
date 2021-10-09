@@ -44,7 +44,7 @@ def get_output_filenames(file_list):
     """
     tmp = file_list[0]
     parent_folder = os.path.split(os.path.split(tmp)[0])[0]
-    OUTPUT_ROOT = os.path.join(parent_folder, 'predict(RRU)')
+    OUTPUT_ROOT = os.path.join(parent_folder, 'predict(RRU)2')
     if not os.path.exists(OUTPUT_ROOT):
         os.mkdir(OUTPUT_ROOT)
 
@@ -78,7 +78,7 @@ if __name__ == "__main__":
     network = 'Ringed_Res_Unet'
     in_files = os.path.join(current_path, 'data', 'test', 'images')
     # img = Image.open('your_test_img.png')
-    model = os.path.join(current_path, 'result', 'logs', 'Total', 'Ringed_Res_Unetcheckpoint_epoch50.pth')
+    model = os.path.join(current_path, 'result', 'logs', 'Total', 'Ringed_Res_Unet', 'ckpoint_epoch50_2.pth')
 
     if network == 'Unet':
         net = Unet(n_channels=3, n_classes=1)
@@ -112,10 +112,11 @@ if __name__ == "__main__":
                 img_regex = re.compile("([0-9]+)\.")
                 mask_regex = re.compile("([0-9]+)_OUT\.")
                 file_no = img_regex.match(os.path.split(filename)[1]).groups()[0]
-                logging.info(f'\nPredicting image {filename} ...')
+                print(f'\nPredicting image {filename} ...')
                 # img = Image.open(filename)
                 # img = cv2.cvtColor(cv2.imread(filename, cv2.IMREAD_COLOR), cv2.COLOR_BGR2RGB)
                 img = Image.open(filename)
+                width, height = img.size
                 mask = predict_img(net=net,
                                    full_img=img,
                                    scale_factor=scale,
@@ -126,6 +127,7 @@ if __name__ == "__main__":
                     mask_no = mask_regex.match(os.path.split(out_filename)[1]).groups()[0]
                     assert int(file_no) == int(mask_no), "file number and mask number not match"
                     result = mask_to_image(mask)
+                    result = result.resize((width, height))
                     result.save(out_filename)
                     print(f'Mask saved to {out_filename}')
 
@@ -133,12 +135,12 @@ if __name__ == "__main__":
     #     print("Visualizing results for image {}, close to continue ...".format(j))
     #     plot_img_and_mask(img, mask)
 
-    if not no_save:
-        result = mask_to_image(mask)
-
-        if network == 'Unet':
-            result.save('predict_u.png')
-        elif network == 'Res_Unet':
-            result.save('predict_ru.png')
-        else:
-            result.save('predict_rru.png')
+    # if not no_save:
+    #     result = mask_to_image(mask)
+    #
+    #     if network == 'Unet':
+    #         result.save('predict_u.png')
+    #     elif network == 'Res_Unet':
+    #         result.save('predict_ru.png')
+    #     else:
+    #         result.save('predict_rru.png')
