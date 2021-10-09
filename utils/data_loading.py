@@ -82,16 +82,32 @@ class BasicDataset(Dataset):
         else:
             img = cv2.resize(img, resize, interpolation=cv2.INTER_CUBIC)
 
-        if is_mask:
+        if is_mask: #確保mask的值是0 or 1
             img = np.where(img >= 1, 1, 0)
+
+        if not is_mask:
+            # img = img / 255
+            transform = torchvision.transforms.Compose([
+                torchvision.transforms.ToTensor(),
+                torchvision.transforms.Normalize(
+                    mean=[0.485, 0.456, 0.406],
+                    std=[0.229, 0.224, 0.225],
+                ),
+            ])
+            img = transform(img)
+        elif is_mask:
+            transform = torchvision.transforms.Compose([
+                torchvision.transforms.ToTensor(),
+            ])
+            img = transform(img)
 
         # only 2 dim
         if img.ndim == 2 and not is_mask:
-            img = img[np.newaxis, ...]
-        elif not is_mask:
-            img = img.transpose((2, 0, 1))
-        if not is_mask:
-            img = img / 255
+            # img = img[np.newaxis, ...]
+            img = torch.unsqueeze(img, 0)
+        # elif not is_mask:
+        #     img = img.transpose((2, 0, 1))
+        #     img = img.transpose(0, 1)
         return img
 
     @staticmethod
@@ -110,8 +126,8 @@ class BasicDataset(Dataset):
             else:
                 if not is_mask:
                     tmp = cv2.imread(str(filename), cv2.IMREAD_COLOR)
-                    # cv2.cvtColor(tmp, cv2.COLOR_BGR2RGB)
-                    tmp = tmp[:, :, [2, 1, 0]]
+                    tmp = cv2.cvtColor(tmp, cv2.COLOR_BGR2RGB)
+                    # tmp = tmp[:, :, [2, 1, 0]]
                     return tmp
                 else:
                     return cv2.imread(str(filename), cv2.IMREAD_GRAYSCALE)
@@ -137,14 +153,14 @@ class BasicDataset(Dataset):
             print("encounter error during preprocess : {}".format(name))
             raise RuntimeError
 
-        rtn_image = torch.as_tensor(copy.deepcopy(img)).float().contiguous()
-        rtn_mask = torch.as_tensor(copy.deepcopy(mask)).long().contiguous()
+        # rtn_image = torch.as_tensor(copy.deepcopy(img)).float().contiguous()
+        # rtn_mask = torch.as_tensor(copy.deepcopy(mask)).long().contiguous()
 
         diff = np.setdiff1d(np.unique(mask), np.array([0, 1]))
         assert diff.size == 0, "value not match, diff:{}".format(diff)
         return {
-            'image': rtn_image,
-            'mask': rtn_mask
+            'image': img,
+            'mask': mask
         }
 
 
@@ -163,24 +179,24 @@ class ForgeDataset(BasicDataset):
 
 if __name__ == "__main__":
     print("___main___")
-    # ## test dataset valid
-    # DATASETS_DIR = Path(r'I:\datasets')
-    # # DATASETS_DIR = Path('/media/ian/WD/datasets')
-    # dir_img = DATASETS_DIR.joinpath('big_coco_forge', 'images')
-    # dir_mask = DATASETS_DIR.joinpath('big_coco_forge', 'masks')
-    # dir_checkpoint = Path(r'.\checkpoints_big_coco_forge(UNet)')
-    # dataset = ForgeDataset(dir_img, dir_mask, 1, mask_suffix='', resize=(256, 256))
-    # loader_args = dict(batch_size=4, num_workers=4, pin_memory=True)
-    # dataloader = DataLoader(dataset, shuffle=True, **loader_args)
-    # dataiter = iter(dataloader)
-    # idx = 0
-    # while True:
-    #     try:
-    #         features, labels = next(dataiter)
-    #         print('number: {}'.format(idx))
-    #         idx += 1
-    #     except StopIteration:
-    #         break
+    ## test dataset valid
+    DATASETS_DIR = Path(r'I:\datasets')
+    # DATASETS_DIR = Path('/media/ian/WD/datasets')
+    dir_img = DATASETS_DIR.joinpath('big_coco_forge', 'images')
+    dir_mask = DATASETS_DIR.joinpath('big_coco_forge', 'masks')
+    dir_checkpoint = Path(r'.\checkpoints_big_coco_forge(UNet)')
+    dataset = ForgeDataset(dir_img, dir_mask, 1, mask_suffix='', resize=(256, 256))
+    loader_args = dict(batch_size=1, num_workers=4, pin_memory=True)
+    dataloader = DataLoader(dataset, shuffle=True, **loader_args)
+    dataiter = iter(dataloader)
+    idx = 0
+    while True:
+        try:
+            features, labels = next(dataiter)
+            print('number: {}'.format(idx))
+            idx += 1
+        except StopIteration:
+            break
     #################################################################################################################
     # masks = list(Path(dir_mask).glob("*.*"))
     # print(len(masks))
@@ -200,10 +216,10 @@ if __name__ == "__main__":
     # img = Image.open("/tmp/f1eb080c7182_15_mask.gif")
     # print(img)
     #################################################################################################################
-    test_img = r'I:\datasets\big_coco_forge\images\000000.jpg'
-    pil_img = np.asarray(Image.open(test_img))
-    cv_img = cv2.imread(test_img)
-    # cv_img = cv2.cvtColor(cv_img, cv2.COLOR_BGR2RGB)
-    cv_img = cv_img[:, :, [2, 1, 0]]
-    unique, counts = np.unique((pil_img == cv_img), return_counts=True)
-    print(dict(zip(unique, counts)))
+    # test_img = r'I:\datasets\big_coco_forge\images\000000.jpg'
+    # pil_img = np.asarray(Image.open(test_img))
+    # cv_img = cv2.imread(test_img)
+    # # cv_img = cv2.cvtColor(cv_img, cv2.COLOR_BGR2RGB)
+    # cv_img = cv_img[:, :, [2, 1, 0]]
+    # unique, counts = np.unique((pil_img == cv_img), return_counts=True)
+    # print(dict(zip(unique, counts)))

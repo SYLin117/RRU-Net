@@ -3,7 +3,7 @@ import os.path
 import torch.backends.cudnn as cudnn
 from torch import optim
 
-from eval import eval_net
+from eval import eval_net, dice_loss
 from unet.unet_model import *
 from utils import *
 
@@ -77,6 +77,8 @@ def train_net(net,
     #                        lr=lr,
     #                        weight_decay=0)
     optimizer = optim.RMSprop(net.parameters(), lr=lr, weight_decay=1e-8, momentum=0.9)
+    # scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'max', patience=2)  # goal: maximize Dice score
+    # grad_scaler = torch.cuda.amp.GradScaler(enabled=False)
     criterion = nn.BCELoss()
 
     Train_loss = []
@@ -117,7 +119,7 @@ def train_net(net,
             masks_probs = torch.sigmoid(masks_pred)
             masks_probs_flat = masks_probs.view(-1).to(torch.float32)
             true_masks_flat = true_masks.view(-1).to(torch.float32)
-            loss = criterion(masks_probs_flat, true_masks_flat)
+            loss = criterion(masks_probs_flat, true_masks_flat) + dice_loss(masks_pred, true_masks)
 
             print('{:.4f} --- loss: {:.4f}, {:.3f}s'.format(i * batch_size / n_train, loss, time.time() - start_batch))
 
@@ -131,8 +133,6 @@ def train_net(net,
                 'step': global_step,
                 'epoch': epoch
             })
-
-
 
         print('Epoch finished ! Loss: {:.4f}'.format(epoch_loss / i))
 
@@ -176,15 +176,17 @@ def train_net(net,
 
 
 if __name__ == '__main__':
+    import pathlib
+
     epochs, batchsize, scale, gpu = 50, 6, 1, True
-    lr = 1e-3
+    lr = 1e-5
     ft = False
     dataset = 'Total'
     # dataset = 'total_split'
 
     # model: 'Unet', 'Res_Unet', 'Ringed_Res_Unet'
     model = 'Ringed_Res_Unet'
-
+    current_path = str(pathlib.Path().resolve())
     # dir_img = './data/data_{}/train/tam/'.format(dataset)
     # dir_mask = './data/data_{}/train/mask/'.format(dataset)
     # dir_img = '/media/ian/WD/datasets/total_forge/train_and_test/train/images'
@@ -193,7 +195,8 @@ if __name__ == '__main__':
     dir_mask = r'E:\data\train_and_test\train_and_test\train\masks'
     # dir_img = r'E:\data\train_and_test\train_and_test\test\images'
     # dir_mask = r'E:\data\train_and_test\train_and_test\test\masks'
-    dir_logs = '.\\result\\logs\\{}\{}\\'.format(dataset, model)
+    # dir_logs = '.\\result\\logs\\{}\{}\\'.format(dataset, model)
+    dir_logs = os.path.join(current_path, 'result', 'logs', dataset, model)
     if not os.path.exists(dir_logs):
         os.makedirs(dir_logs)
     if model == 'Unet':
@@ -204,7 +207,8 @@ if __name__ == '__main__':
         net = Ringed_Res_Unet(n_channels=3, n_classes=1)
 
     if ft:
-        fine_tuning_model = './result/logs/{}/{}/test.pkl'.format(dataset, model)
+        # fine_tuning_model = './result/logs/{}/{}/test.pkl'.format(dataset, model)
+        fine_tuning_model = os.path.join(current_path, 'result', 'logs', dataset, model, 'test.pkl')
         net.load_state_dict(torch.load(fine_tuning_model))
         print('Model loaded from {}'.format(fine_tuning_model))
 
