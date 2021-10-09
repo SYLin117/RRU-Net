@@ -106,6 +106,7 @@ if __name__ == "__main__":
             print("path is file")
         elif os.path.isdir(in_files):
             input_files = glob(os.path.join(in_files, '*.*'))
+            print("input folder got {} files".format(len(input_files)))
             output_files = get_output_filenames(input_files)
             for i, filename in enumerate(input_files):
                 img_regex = re.compile("([0-9]+)\.")
@@ -126,7 +127,7 @@ if __name__ == "__main__":
                     assert int(file_no) == int(mask_no), "file number and mask number not match"
                     result = mask_to_image(mask)
                     result.save(out_filename)
-                    logging.info(f'Mask saved to {out_filename}')
+                    print(f'Mask saved to {out_filename}')
 
     # if viz:
     #     print("Visualizing results for image {}, close to continue ...".format(j))
