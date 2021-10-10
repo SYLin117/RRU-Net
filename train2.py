@@ -38,22 +38,7 @@ def train_net(net,
     val_loader = DataLoader(val_set, shuffle=False, drop_last=True, **loader_args2)
 
     experiment = wandb.init(project='Video(RRU-Net)', resume='allow', anonymous='must')
-    experiment.name = '''
-        Starting training:
-            Epochs: {}
-            Batch size: {}
-            Learning rate: {}
-            Training size: {}
-            Validation size: {}
-            Checkpoints: {}
-            CUDA: {}
-        '''.format(epochs,
-                   batch_size,
-                   lr,
-                   n_train,
-                   n_val,
-                   str(save_cp),
-                   str(gpu))
+    experiment.name = 'RRU-Net'
     experiment.config.update(dict(epochs=epochs, batch_size=batch_size, learning_rate=lr,
                                   val_percent=val_percent, resize=(300, 300), checkpoints=save_cp, gpu=gpu))
     print('''
@@ -199,9 +184,13 @@ if __name__ == '__main__':
     # dir_mask = r'E:\data\train_and_test\train_and_test\train\masks'
     # dir_img = r'E:\data\train_and_test\train_and_test\test\images'
     # dir_mask = r'E:\data\train_and_test\train_and_test\test\masks'
-    ###############################################################################
-    dir_img = r'D:\VTD\video_tampering_dataset\videos\h264_lossless\test_and_train\train\images'
-    dir_mask = r'D:\VTD\video_tampering_dataset\videos\h264_lossless\test_and_train\train\masks'
+
+    ############################  REWIND DATSET  ##########################################
+    # dir_img = r'D:\VTD\video_tampering_dataset\videos\h264_lossless\test_and_train\train\images'
+    # dir_mask = r'D:\VTD\video_tampering_dataset\videos\h264_lossless\test_and_train\train\masks'
+    dir_img = r'/media/ian/WD/datasets/video tempered dataset/REWIND/video_tampering_dataset/videos/h264_lossless(processed)/test_and_train/train/images'
+    dir_mask = r'/media/ian/WD/datasets/video tempered dataset/REWIND/video_tampering_dataset/videos/h264_lossless(processed)/test_and_train/train/masks'
+
     dir_logs = os.path.join(current_path, 'result', 'logs', dataset, model)
     if not os.path.exists(dir_logs):
         os.makedirs(dir_logs)

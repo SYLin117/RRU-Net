@@ -76,9 +76,10 @@ if __name__ == "__main__":
 
     current_path = str(pathlib.Path().resolve())
     network = 'Ringed_Res_Unet'
-    in_files = os.path.join(current_path, 'data', 'test', 'images')
+    in_files = os.path.join(current_path, 'data', 'video_test', 'images')
     # img = Image.open('your_test_img.png')
-    model = os.path.join(current_path, 'result', 'logs', 'Total', 'Ringed_Res_Unet', 'ckpoint_epoch50_2.pth')
+    model = os.path.join(current_path, 'result', 'logs', 'Rewind',
+                         'Ringed_Res_Unetcheckpoint_epoch50.pth')
 
     if network == 'Unet':
         net = Unet(n_channels=3, n_classes=1)
