@@ -21,7 +21,8 @@ def train_net(net,
               save_cp=True,
               gpu=False,
               img_scale=1,
-              dataset=None):
+              dataset=None,
+              dir_logs=None):
     # training images are square
     # ids = split_ids(get_ids(dir_img))
     # iddataset = split_train_val(ids, val_percent)
@@ -36,7 +37,7 @@ def train_net(net,
     train_loader = DataLoader(train_set, shuffle=True, **loader_args)
     val_loader = DataLoader(val_set, shuffle=False, drop_last=True, **loader_args2)
 
-    experiment = wandb.init(project='Total(RRU-Net)', resume='allow', anonymous='must')
+    experiment = wandb.init(project='Video(RRU-Net)', resume='allow', anonymous='must')
     experiment.name = '''
         Starting training:
             Epochs: {}
@@ -176,12 +177,15 @@ def train_net(net,
 
 
 if __name__ == '__main__':
+    """
+    修改train.py並使用Pytorch Dataset 做為資料讀取的方式
+    """
     import pathlib
 
     epochs, batchsize, scale, gpu = 50, 6, 1, True
     lr = 1e-5
     ft = False
-    dataset = 'Total'
+    dataset = 'Rewind'
     # dataset = 'total_split'
 
     # model: 'Unet', 'Res_Unet', 'Ringed_Res_Unet'
@@ -191,11 +195,13 @@ if __name__ == '__main__':
     # dir_mask = './data/data_{}/train/mask/'.format(dataset)
     # dir_img = '/media/ian/WD/datasets/total_forge/train_and_test/train/images'
     # dir_mask = '/media/ian/WD/datasets/total_forge/train_and_test/train/masks'
-    dir_img = r'E:\data\train_and_test\train_and_test\train\images'
-    dir_mask = r'E:\data\train_and_test\train_and_test\train\masks'
+    # dir_img = r'E:\data\train_and_test\train_and_test\train\images'
+    # dir_mask = r'E:\data\train_and_test\train_and_test\train\masks'
     # dir_img = r'E:\data\train_and_test\train_and_test\test\images'
     # dir_mask = r'E:\data\train_and_test\train_and_test\test\masks'
-    # dir_logs = '.\\result\\logs\\{}\{}\\'.format(dataset, model)
+    ###############################################################################
+    dir_img = r'D:\VTD\video_tampering_dataset\videos\h264_lossless\test_and_train\train\images'
+    dir_mask = r'D:\VTD\video_tampering_dataset\videos\h264_lossless\test_and_train\train\masks'
     dir_logs = os.path.join(current_path, 'result', 'logs', dataset, model)
     if not os.path.exists(dir_logs):
         os.makedirs(dir_logs)
@@ -220,6 +226,9 @@ if __name__ == '__main__':
               epochs=epochs,
               batch_size=batchsize,
               lr=lr,
+              val_percent=0.1,
+              save_cp=True,
               gpu=gpu,
               img_scale=scale,
-              dataset=dataset)
+              dataset=dataset,
+              dir_logs=dir_logs)
