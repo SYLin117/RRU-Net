@@ -6,13 +6,16 @@ from pathlib import Path
 
 import cv2
 import numpy as np
-import torch
 from PIL import Image
+import torch
 from torch.utils.data import Dataset, DataLoader, random_split
 import torchvision
 import copy
-from tqdm import tqdm
-import matplotlib.pyplot as plt
+import pathlib
+
+from unet.unet_model import *
+from transunet import MyTransUNet, MyTransUNet2
+import re
 
 
 class BasicDataset(Dataset):
@@ -82,7 +85,7 @@ class BasicDataset(Dataset):
         else:
             img = cv2.resize(img, resize, interpolation=cv2.INTER_CUBIC)
 
-        if is_mask: #確保mask的值是0 or 1
+        if is_mask:  # 確保mask的值是0 or 1
             img = np.where(img >= 1, 1, 0)
 
         if not is_mask:
@@ -177,26 +180,68 @@ class ForgeDataset(BasicDataset):
         super().__init__(images_dir, masks_dir, scale, mask_suffix=mask_suffix, resize=resize)
 
 
+def find_latest_epoch(dir):
+    epoch_re = re.compile(r'checkpoint_epoch([0-9]+).pth')
+
+    def func(st):  # I am using your first string as a running example in this code
+        epoch_no = epoch_re.match(st).groups()[0]
+        return int(epoch_no)
+
+    files = [f for f in listdir(dir) if os.path.isfile(os.path.join(dir, f)) and f.endswith('.pth')]
+    # files.sort()
+    files = sorted(files, key=lambda x: func(x))
+    latest_epoch = files[-1]
+    epoch_no = epoch_re.match(latest_epoch).groups()[0]
+    return os.path.join(dir, latest_epoch), int(epoch_no)
+
+
 if __name__ == "__main__":
     print("___main___")
+    ROOT_PATH = str(pathlib.Path().resolve().parent)
+    # CURRENT_PATH = os.path.dirname(os.path.abspath(__file__))
     ## test dataset valid
-    DATASETS_DIR = Path(r'I:\datasets')
+    DATASETS_DIR = Path(r'F:\datasets')
     # DATASETS_DIR = Path('/media/ian/WD/datasets')
-    dir_img = DATASETS_DIR.joinpath('big_coco_forge', 'images')
-    dir_mask = DATASETS_DIR.joinpath('big_coco_forge', 'masks')
+    dir_img = DATASETS_DIR.joinpath('COCO', 'coco2017_large_cm', 'A', 'train')
+    dir_mask = DATASETS_DIR.joinpath('COCO', 'coco2017_large_cm', 'B', 'train')
     dir_checkpoint = Path(r'.\checkpoints_big_coco_forge(UNet)')
     dataset = ForgeDataset(dir_img, dir_mask, 1, mask_suffix='', resize=(256, 256))
-    loader_args = dict(batch_size=1, num_workers=4, pin_memory=True)
+    loader_args = dict(batch_size=2, num_workers=4, pin_memory=True)
     dataloader = DataLoader(dataset, shuffle=True, **loader_args)
     dataiter = iter(dataloader)
-    idx = 0
-    while True:
-        try:
-            features, labels = next(dataiter)
-            print('number: {}'.format(idx))
-            idx += 1
-        except StopIteration:
-            break
+    # idx = 0
+    # while True:
+    #     try:
+    #         features, labels = next(dataiter)
+    #         print('number: {}'.format(idx))
+    #         idx += 1
+    #     except StopIteration:
+    #         break
+    # features, labels =dataiter.next()
+    random_index = int(np.random.random() * len(dataset))
+    single_example = dataset[random_index]
+    true_mask = single_example['mask']
+    img = single_example['image']
+    img = img.unsqueeze(dim=0)
+    model = 'Unet'
+    latest_model, latest_epoch = find_latest_epoch(
+        os.path.join(ROOT_PATH, 'result', 'logs', 'large_cm', model, ))
+    if model == 'Unet':
+        net = Unet(n_channels=3, n_classes=1)
+    elif model == 'Res_Unet':
+        net = Res_Unet(n_channels=3, n_classes=1)
+    elif model == 'Ringed_Res_Unet':
+        net = Ringed_Res_Unet(n_channels=3, n_classes=1)
+    elif model == 'TransUnet':
+        net = MyTransUNet(in_channels=3, classes=1)
+    net.load_state_dict(torch.load(latest_model))
+    with torch.no_grad():
+        pred_mask = net(img)
+        pred_mask = torch.sigmoid(pred_mask).squeeze().cpu()
+    true_mask = true_mask.squeeze()
+    print(img.size())
+    print(pred_mask.size())
+    print(true_mask.size())
     #################################################################################################################
     # masks = list(Path(dir_mask).glob("*.*"))
     # print(len(masks))

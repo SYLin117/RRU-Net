@@ -11,6 +11,10 @@ import matplotlib.pyplot as plt
 import time
 
 import wandb
+from transunet import MyTransUNet
+
+import re
+from tqdm import tqdm
 
 
 def train_net(net,
@@ -21,24 +25,32 @@ def train_net(net,
               save_cp=True,
               gpu=False,
               img_scale=1,
-              dataset=None,
-              dir_logs=None):
+              train_dataset=None,
+              val_dataset=None,
+              dir_logs=None,
+              model_name='no-model_name',
+              resume=None):
     # training images are square
     # ids = split_ids(get_ids(dir_img))
     # iddataset = split_train_val(ids, val_percent)
 
-    dataset = ForgeDataset(dir_img, dir_mask, 1, mask_suffix='', resize=(300, 300))
-    n_val = int(len(dataset) * val_percent)
-    n_train = len(dataset) - n_val
-    train_set, val_set = random_split(dataset, [n_train, n_val], generator=torch.Generator().manual_seed(0))
+    # dataset = ForgeDataset(dir_img, dir_mask, 1, mask_suffix='', resize=(300, 300))
+    n_val = int(len(train_dataset) * val_percent) if not val_dataset else len(val_dataset)
+    n_train = len(train_dataset) - n_val if not val_dataset else len(train_dataset)
+    if not val_dataset:
+        train_set, val_set = random_split(train_dataset, [n_train, n_val], generator=torch.Generator().manual_seed(0))
+    else:
+        train_set = train_dataset
+        val_set = val_dataset
 
-    loader_args = dict(batch_size=batch_size, num_workers=4, pin_memory=True)
-    loader_args2 = dict(batch_size=1, num_workers=4, pin_memory=True)
-    train_loader = DataLoader(train_set, shuffle=True, **loader_args)
-    val_loader = DataLoader(val_set, shuffle=False, drop_last=True, **loader_args2)
+    train_args = dict(batch_size=batch_size, num_workers=4, pin_memory=True)
+    train_loader = DataLoader(train_set, shuffle=False, **train_args)
+    val_args = dict(batch_size=1, num_workers=4, pin_memory=True)
+    val_loader = DataLoader(val_set, shuffle=False, drop_last=True, **val_args)
 
-    experiment = wandb.init(project='Video(RRU-Net)', resume='allow', anonymous='must')
-    experiment.name = 'RRU-Net'
+    id = wandb.util.generate_id() if not resume else resume
+    experiment = wandb.init(project='Copy-Move-COCO', id=id, resume='allow', anonymous='must')
+    experiment.name = model_name
     experiment.config.update(dict(epochs=epochs, batch_size=batch_size, learning_rate=lr,
                                   val_percent=val_percent, resize=(300, 300), checkpoints=save_cp, gpu=gpu))
     print('''
@@ -84,8 +96,8 @@ def train_net(net,
         epoch_loss = 0
 
         # for i, b in enumerate(batch(train, batch_size)):
-        for i, b in enumerate(train_loader):
-            global_step += 1
+        for i, b in enumerate(tqdm(train_loader)):
+            global_step += 1 * batch_size
             start_batch = time.time()
             # imgs = np.array([i[0] for i in b]).astype(np.float32)
             # true_masks = np.array([i[1] for i in b]).astype(np.float32) / 255.
@@ -107,7 +119,7 @@ def train_net(net,
             true_masks_flat = true_masks.view(-1).to(torch.float32)
             loss = criterion(masks_probs_flat, true_masks_flat) + dice_loss(masks_pred, true_masks)
 
-            print('{:.4f} --- loss: {:.4f}, {:.3f}s'.format(i * batch_size / n_train, loss, time.time() - start_batch))
+            # print('{:.4f} --- loss: {:.4f}, {:.3f}s'.format(i * batch_size / n_train, loss, time.time() - start_batch))
 
             epoch_loss += loss.item()
 
@@ -119,6 +131,26 @@ def train_net(net,
                 'step': global_step,
                 'epoch': epoch
             })
+            if global_step % int(n_train * 0.01) == 0:
+                random_index = int(np.random.random() * len(val_set))
+                single_val = val_set[random_index]
+                val_true_mask = single_val['mask']  # on cpu
+                val_imgs = single_val['image']  # on cpu
+                val_imgs = val_imgs.unsqueeze(dim=0)
+                if gpu:
+                    val_imgs = val_imgs.cuda()
+                with torch.no_grad():
+                    val_pred_mask = net(val_imgs)
+                    val_pred_mask = torch.sigmoid(val_pred_mask).squeeze(0)
+                experiment.log({
+                    'images': wandb.Image(val_imgs[0].cpu()),
+                    'masks': {
+                        'true': wandb.Image(val_true_mask[0].float().cpu()),
+                        'pred': wandb.Image(val_pred_mask[0].float().cpu()),
+                    },
+                    'step': global_step,
+                    'epoch': epoch,
+                })
 
         print('Epoch finished ! Loss: {:.4f}'.format(epoch_loss / i))
 
@@ -128,37 +160,39 @@ def train_net(net,
         val_dice = eval_net(net, val_loader, gpu)
         print('Validation Dice Coeff: {:.4f}'.format(val_dice))
         experiment.log({
-            'learning rate': optimizer.param_groups[0]['lr'],
-            'validation Dice': val_dice,
-            # 'images': wandb.Image(images[0].cpu()),
-            # 'masks': {
-            #     'true': wandb.Image(true_masks[0].float().cpu()),
-            #     'pred': wandb.Image(torch.softmax(masks_pred, dim=1)[0].float().cpu()),
-            # },
-            'step': global_step,
-            'epoch': epoch,
+            'Validation Dice Coeff: {:.4f}': val_dice
         })
-
         Train_loss.append(epoch_loss / i)
         Valida_dice.append(val_dice)
         EPOCH.append(epoch)
 
         fig = plt.figure()
-
         plt.title('Training Process')
         plt.xlabel('epoch')
         plt.ylabel('value')
         l1, = plt.plot(EPOCH, Train_loss, c='red')
         l2, = plt.plot(EPOCH, Valida_dice, c='blue')
-
         plt.legend(handles=[l1, l2], labels=['Tra_loss', 'Val_dice'], loc='best')
-        plt.savefig(dir_logs + 'Training Process for lr-{}.png'.format(lr), dpi=600)
+        plt.savefig(os.path.join(dir_logs, 'Training Process for lr-{}.png'.format(lr)), dpi=600)
 
-        # torch.save(net.state_dict(),
-        #            dir_logs + '{}-[val_dice]-{:.4f}-[train_loss]-{:.4f}.pkl'.format(dataset, val_dice, epoch_loss / i))
-        torch.save(net.state_dict(), dir_logs + 'checkpoint_epoch{}.pth'.format(epoch + 1))
+        torch.save(net.state_dict(), os.path.join(dir_logs, 'checkpoint_epoch{}.pth'.format(epoch + 1)))
         print('Spend time: {:.3f}s'.format(time.time() - start_epoch))
         print()
+
+
+def find_latest_epoch(dir):
+    epoch_re = re.compile(r'checkpoint_epoch([0-9]+).pth')
+
+    def func(st):  # I am using your first string as a running example in this code
+        epoch_no = epoch_re.match(st).groups()[0]
+        return int(epoch_no)
+
+    files = [f for f in listdir(dir) if os.path.isfile(os.path.join(dir, f)) and f.endswith('.pth')]
+    # files.sort()
+    files = sorted(files, key=lambda x: func(x))
+    latest_epoch = files[-1]
+    epoch_no = epoch_re.match(latest_epoch).groups()[0]
+    return os.path.join(dir, latest_epoch), int(epoch_no)
 
 
 if __name__ == '__main__':
@@ -169,29 +203,12 @@ if __name__ == '__main__':
 
     epochs, batchsize, scale, gpu = 50, 6, 1, True
     lr = 1e-5
-    ft = False
-    dataset = 'Rewind'
-    # dataset = 'total_split'
+    ft = True
+    dataset_name = 'large_cm'
+    model = 'Unet'
+    CURRENT_PATH = str(pathlib.Path().resolve())
 
-    # model: 'Unet', 'Res_Unet', 'Ringed_Res_Unet'
-    model = 'Ringed_Res_Unet'
-    current_path = str(pathlib.Path().resolve())
-    # dir_img = './data/data_{}/train/tam/'.format(dataset)
-    # dir_mask = './data/data_{}/train/mask/'.format(dataset)
-    # dir_img = '/media/ian/WD/datasets/total_forge/train_and_test/train/images'
-    # dir_mask = '/media/ian/WD/datasets/total_forge/train_and_test/train/masks'
-    # dir_img = r'E:\data\train_and_test\train_and_test\train\images'
-    # dir_mask = r'E:\data\train_and_test\train_and_test\train\masks'
-    # dir_img = r'E:\data\train_and_test\train_and_test\test\images'
-    # dir_mask = r'E:\data\train_and_test\train_and_test\test\masks'
-
-    ############################  REWIND DATSET  ##########################################
-    # dir_img = r'D:\VTD\video_tampering_dataset\videos\h264_lossless\test_and_train\train\images'
-    # dir_mask = r'D:\VTD\video_tampering_dataset\videos\h264_lossless\test_and_train\train\masks'
-    dir_img = r'/media/ian/WD/datasets/video tempered dataset/REWIND/video_tampering_dataset/videos/h264_lossless(processed)/test_and_train/train/images'
-    dir_mask = r'/media/ian/WD/datasets/video tempered dataset/REWIND/video_tampering_dataset/videos/h264_lossless(processed)/test_and_train/train/masks'
-
-    dir_logs = os.path.join(current_path, 'result', 'logs', dataset, model)
+    dir_logs = os.path.join(CURRENT_PATH, 'result', 'logs', dataset_name, model)
     if not os.path.exists(dir_logs):
         os.makedirs(dir_logs)
     if model == 'Unet':
@@ -200,17 +217,26 @@ if __name__ == '__main__':
         net = Res_Unet(n_channels=3, n_classes=1)
     elif model == 'Ringed_Res_Unet':
         net = Ringed_Res_Unet(n_channels=3, n_classes=1)
+    elif model == 'TransUnet':
+        net = MyTransUNet(in_channels=3, classes=1)
 
     if ft:
-        # fine_tuning_model = './result/logs/{}/{}/test.pkl'.format(dataset, model)
-        fine_tuning_model = os.path.join(current_path, 'result', 'logs', dataset, model, 'test.pkl')
+        fine_tuning_model, latest_epoch = find_latest_epoch(
+            os.path.join(CURRENT_PATH, 'result', 'logs', dataset_name, model, ))
         net.load_state_dict(torch.load(fine_tuning_model))
+        epochs = epochs - latest_epoch
         print('Model loaded from {}'.format(fine_tuning_model))
-
+        id = '2f3silq6'
     if gpu:
         net.cuda()
         cudnn.benchmark = True  # faster convolutions, but more memory
-
+    DATASETS_DIR = Path(r'F:\datasets')
+    dir_img = DATASETS_DIR.joinpath('COCO', 'coco2017_large_cm', 'A', 'train')
+    dir_mask = DATASETS_DIR.joinpath('COCO', 'coco2017_large_cm', 'B', 'train')
+    train_dataset = ForgeDataset(dir_img, dir_mask, 1, mask_suffix='', resize=(300, 300))
+    dir_img_val = DATASETS_DIR.joinpath('COCO', 'coco2017_large_cm', 'A', 'val')
+    dir_mask_val = DATASETS_DIR.joinpath('COCO', 'coco2017_large_cm', 'B', 'val')
+    val_dataset = ForgeDataset(dir_img_val, dir_mask_val, 1, mask_suffix='', resize=(300, 300))
     train_net(net=net,
               epochs=epochs,
               batch_size=batchsize,
@@ -219,5 +245,8 @@ if __name__ == '__main__':
               save_cp=True,
               gpu=gpu,
               img_scale=scale,
-              dataset=dataset,
-              dir_logs=dir_logs)
+              train_dataset=train_dataset,
+              val_dataset=val_dataset,
+              dir_logs=dir_logs,
+              model_name=model,
+              resume=None)
