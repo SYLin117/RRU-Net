@@ -29,7 +29,9 @@ def train_net(net,
               val_dataset=None,
               dir_logs=None,
               model_name='no-model_name',
-              resume=None):
+              resume=None,
+              resume_id=None,
+              latest_epoch=0, ):
     # training images are square
     # ids = split_ids(get_ids(dir_img))
     # iddataset = split_train_val(ids, val_percent)
@@ -48,11 +50,15 @@ def train_net(net,
     val_args = dict(batch_size=1, num_workers=4, pin_memory=True)
     val_loader = DataLoader(val_set, shuffle=False, drop_last=True, **val_args)
 
-    id = wandb.util.generate_id() if not resume else resume
+    id = wandb.util.generate_id() if not resume else resume_id
     experiment = wandb.init(project='Copy-Move-COCO', id=id, resume='allow', anonymous='must')
     experiment.name = model_name
-    experiment.config.update(dict(epochs=epochs, batch_size=batch_size, learning_rate=lr,
-                                  val_percent=val_percent, resize=(300, 300), checkpoints=save_cp, gpu=gpu))
+    if not resume:
+        experiment.config.update(dict(epochs=epochs, batch_size=batch_size, learning_rate=lr,
+                                      val_percent=val_percent, resize=(300, 300), checkpoints=save_cp, gpu=gpu))
+    else:
+        experiment.config.update(dict(epochs=latest_epoch, batch_size=batch_size, learning_rate=lr,
+                                      val_percent=val_percent, resize=(300, 300), checkpoints=save_cp, gpu=gpu))
     print('''
     Starting training:
         Epochs: {}
@@ -84,10 +90,11 @@ def train_net(net,
     EPOCH = []
 
     global_step = 0
-    for epoch in range(epochs):
+    start_epoch = 0 if not resume else latest_epoch  # 如果是resume從最後一次epoch開始 反之從0
+    for epoch in range(start_epoch, epochs):
         net.train()
 
-        start_epoch = time.time()
+        start_epoch_time = time.time()
         print('Starting epoch {}/{}.'.format(epoch + 1, epochs))
         # reset the generators
         # train = get_imgs_and_masks(iddataset['train'], dir_img, dir_mask, img_scale, dataset)
@@ -95,7 +102,6 @@ def train_net(net,
 
         epoch_loss = 0
 
-        # for i, b in enumerate(batch(train, batch_size)):
         for i, b in enumerate(tqdm(train_loader)):
             global_step += 1 * batch_size
             start_batch = time.time()
@@ -176,7 +182,7 @@ def train_net(net,
         plt.savefig(os.path.join(dir_logs, 'Training Process for lr-{}.png'.format(lr)), dpi=600)
 
         torch.save(net.state_dict(), os.path.join(dir_logs, 'checkpoint_epoch{}.pth'.format(epoch + 1)))
-        print('Spend time: {:.3f}s'.format(time.time() - start_epoch))
+        print('Spend time: {:.3f}s'.format(time.time() - start_epoch_time))
         print()
 
 
@@ -249,4 +255,6 @@ if __name__ == '__main__':
               val_dataset=val_dataset,
               dir_logs=dir_logs,
               model_name=model,
-              resume=None)
+              resume=False,
+              resume_id=id,
+              latest_epoch=latest_epoch, )
