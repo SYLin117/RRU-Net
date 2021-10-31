@@ -18,7 +18,7 @@ def predict_img(net,
     # img = np.transpose(normalize(img), (2, 0, 1))
     # img = torch.from_numpy(img).unsqueeze(dim=0)
     tf = torchvision.transforms.Compose([
-        torchvision.transforms.Resize(300, Image.BICUBIC),
+        torchvision.transforms.Resize([300, 300], Image.BICUBIC),
         torchvision.transforms.ToTensor(),
         torchvision.transforms.Normalize(
             mean=[0.485, 0.456, 0.406],
@@ -37,14 +37,14 @@ def predict_img(net,
     return mask > out_threshold
 
 
-def get_output_filenames(file_list):
+def get_output_filenames(file_list, predict_subfolder='predict'):
     """
     input a filename list
     return a output filename list
     """
     tmp = file_list[0]
     parent_folder = os.path.split(os.path.split(tmp)[0])[0]
-    OUTPUT_ROOT = os.path.join(parent_folder, 'predict(RRU)2')
+    OUTPUT_ROOT = os.path.join(parent_folder, predict_subfolder)
     if not os.path.exists(OUTPUT_ROOT):
         os.mkdir(OUTPUT_ROOT)
 
@@ -76,11 +76,15 @@ if __name__ == "__main__":
 
     current_path = str(pathlib.Path().resolve())
     network = 'Ringed_Res_Unet'
-    in_files = os.path.join(current_path, 'data', 'video_test', 'images')
-    # img = Image.open('your_test_img.png')
-    model = os.path.join(current_path, 'result', 'logs', 'Rewind',
-                         'Ringed_Res_Unetcheckpoint_epoch50.pth')
-
+    ###############################################PREDICT FILES(FOLDER)################################################
+    # in_files = os.path.join(current_path, 'data', 'video_test', 'images')
+    # in_files = os.path.join('/media', 'ian', 'WD', 'datasets', 'total_forge', 'CM', 'test_and_train', 'test', 'images')
+    in_files = os.path.join('/media', 'ian', 'WD', 'datasets', 'total_forge', 'SP', 'test_and_train', 'test', 'images')
+    ##########################################COPY-MOVE MODEL###########################################################
+    model = os.path.join(current_path, 'result', 'logs', 'SP', 'Ringed_Res_Unet', 'epoch50.pth')
+    ##########################################SPLICING MODEL###########################################################
+    # model = os.path.join(current_path, 'result', 'logs', 'SP',
+    #                      'Ringed_Res_Unet', 'epoch50.pth')
     if network == 'Unet':
         net = Unet(n_channels=3, n_classes=1)
     elif network == 'Res_Unet':
@@ -114,24 +118,27 @@ if __name__ == "__main__":
                 mask_regex = re.compile("([0-9]+)_OUT\.")
                 file_no = img_regex.match(os.path.split(filename)[1]).groups()[0]
                 print(f'\nPredicting image {filename} ...')
-                # img = Image.open(filename)
                 # img = cv2.cvtColor(cv2.imread(filename, cv2.IMREAD_COLOR), cv2.COLOR_BGR2RGB)
-                img = Image.open(filename)
+                img = Image.open(filename).convert('RGB') # cause some image got 4 channel(RGBA)
                 width, height = img.size
-                mask = predict_img(net=net,
-                                   full_img=img,
-                                   scale_factor=scale,
-                                   out_threshold=mask_threshold,
-                                   use_gpu=not cpu)
-                if not no_save:
-                    out_filename = output_files[i]
-                    mask_no = mask_regex.match(os.path.split(out_filename)[1]).groups()[0]
-                    assert int(file_no) == int(mask_no), "file number and mask number not match"
-                    result = mask_to_image(mask)
-                    result = result.resize((width, height))
-                    result.save(out_filename)
-                    print(f'Mask saved to {out_filename}')
-
+                if file_no == '001221':
+                    print('001221.tif shape:{}'.format(img.size))
+                try:
+                    mask = predict_img(net=net,
+                                       full_img=img,
+                                       scale_factor=scale,
+                                       out_threshold=mask_threshold,
+                                       use_gpu=not cpu)
+                    if not no_save:
+                        out_filename = output_files[i]
+                        mask_no = mask_regex.match(os.path.split(out_filename)[1]).groups()[0]
+                        assert int(file_no) == int(mask_no), "file number and mask number not match"
+                        result = mask_to_image(mask)
+                        result = result.resize((width, height))
+                        result.save(out_filename)
+                        print(f'Mask saved to {out_filename}')
+                except RuntimeError as re:
+                    print('img:{} predict encounter error:{}'.format(filename, str(re)))
     # if viz:
     #     print("Visualizing results for image {}, close to continue ...".format(j))
     #     plot_img_and_mask(img, mask)

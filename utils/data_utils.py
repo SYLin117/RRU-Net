@@ -522,11 +522,17 @@ if __name__ == '__main__':
     # split_folder = os.path.join(DATASETS_DIR, r'total_forge\train_and_test')
     # split_train_test(img_folder, gt_folder, split_folder)
     ######################################################################################
-    video_folder = os.path.join('D:\\', 'VTD', 'video_tampering_dataset', 'videos', 'h264_lossless')
+    # video_folder = os.path.join('D:\\', 'VTD', 'video_tampering_dataset', 'videos', 'h264_lossless')
     # make_video_to_image(video_folder)
     # combine_video_image(video_folder)
-    split_train_test(os.path.join(video_folder, 'final_forge'), os.path.join(video_folder, 'final_mask'), os.path.join(video_folder, 'test_and_train'))
+    # split_train_test(os.path.join(video_folder, 'final_forge'), os.path.join(video_folder, 'final_mask'), os.path.join(video_folder, 'test_and_train'))
     ######################################################################################
     # devide_dataset_to_small_patches(r'/media/ian/WD/datasets/total_forge/train_and_test/train/images',
     #                                 r'/media/ian/WD/datasets/total_forge/train_and_test/train/masks',
     #                                 r'/media/ian/WD/datasets/total_forge/train_and_test/train_small_patch(2nd)')
+    ######################################################################################
+    copy_move_folder = os.path.join('/media', 'ian', 'WD', 'datasets', 'total_forge', 'SP', )
+    # make_video_to_image(video_folder)
+    # combine_video_image(video_folder)
+    split_train_test(os.path.join(copy_move_folder, 'forge'), os.path.join(copy_move_folder, 'mask'),
+                     os.path.join(copy_move_folder, 'test_and_train'))

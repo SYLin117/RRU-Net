@@ -30,6 +30,7 @@ def evaluate_by_folder(gt_folder, pred_folder):
             gt_mask = cv2.imread(os.path.join(gt_folder, gt_filename), cv2.IMREAD_GRAYSCALE)
             gt_mask = cv2.morphologyEx(gt_mask, cv2.MORPH_CLOSE, np.ones((3, 3), np.uint8), iterations=3)
             pred_mask = cv2.imread(os.path.join(pred_folder, pred_filename), cv2.IMREAD_GRAYSCALE)
+            pred_mask = cv2.resize(pred_mask, (gt_mask.shape[1], gt_mask.shape[0])) # (width, height)
             pred_mask = cv2.morphologyEx(pred_mask, cv2.MORPH_CLOSE, np.ones((3, 3), np.uint8), iterations=3)
             assert gt_mask.shape == pred_mask.shape, "gt and pred got different size, file: {}, gt.shape:{}, pred.shape:{}".format(
                 gt_filename, gt_mask.shape, pred_mask.shape)
@@ -78,12 +79,25 @@ if __name__ == '__main__':
     # unique, counts = np.unique((gt_mask == pred_mask), return_counts=True)
     # print(dict(zip(unique, counts)))
     #############################################################################################################################
-    precision, recall, acc, f1 = evaluate_by_folder(os.path.join('/media', 'ian', 'WD', 'PythonProject', 'RRU-Net',
-                                                                 'data', 'video_test', 'masks'),
-                                                    os.path.join('/media', 'ian', 'WD', 'PythonProject', 'RRU-Net',
-                                                                 'data', 'video_test', 'predict(RRU)2'))
-    gt_list = [f for f in os.listdir(os.path.join('/media', 'ian', 'WD', 'PythonProject', 'RRU-Net',
-                                                  'data', 'test', 'masks'))]
+    # precision, recall, acc, f1 = evaluate_by_folder(os.path.join('/media', 'ian', 'WD', 'PythonProject', 'RRU-Net',
+    #                                                              'data', 'video_test', 'masks'),
+    #                                                 os.path.join('/media', 'ian', 'WD', 'PythonProject', 'RRU-Net',
+    #                                                              'data', 'video_test', 'predict(RRU)2'))
+    # gt_list = [f for f in os.listdir(os.path.join('/media', 'ian', 'WD', 'PythonProject', 'RRU-Net',
+    #                                               'data', 'test', 'masks'))]
+    #############################################COPY-MOVE DATASET###############################################################
+    # precision, recall, acc, f1 = evaluate_by_folder(
+    #     os.path.join('/media', 'ian', 'WD', 'datasets', 'total_forge', 'CM', 'test_and_train', 'test', 'masks'),
+    #     os.path.join('/media', 'ian', 'WD', 'datasets', 'total_forge', 'CM', 'test_and_train', 'test', 'predict'))
+    # gt_list = [f for f in os.listdir(
+    #     os.path.join('/media', 'ian', 'WD', 'datasets', 'total_forge', 'CM', 'test_and_train', 'test', 'masks'))]
+    #############################################SPLICING DATASET###############################################################
+    precision, recall, acc, f1 = evaluate_by_folder(
+        os.path.join('/media', 'ian', 'WD', 'datasets', 'total_forge', 'SP', 'test_and_train', 'test', 'masks'),
+        os.path.join('/media', 'ian', 'WD', 'datasets', 'total_forge', 'SP', 'test_and_train', 'test', 'predict'))
+    gt_list = [f for f in os.listdir(
+        os.path.join('/media', 'ian', 'WD', 'datasets', 'total_forge', 'SP', 'test_and_train', 'test', 'masks'))]
+    #############################################################################################################################
     gt_list.sort()
     avg_prec = np.average(precision)
     avg_recall = np.average(recall)
