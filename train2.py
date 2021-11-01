@@ -186,21 +186,6 @@ def train_net(net,
         print()
 
 
-def find_latest_epoch(dir):
-    epoch_re = re.compile(r'checkpoint_epoch([0-9]+).pth')
-
-    def func(st):  # I am using your first string as a running example in this code
-        epoch_no = epoch_re.match(st).groups()[0]
-        return int(epoch_no)
-
-    files = [f for f in listdir(dir) if os.path.isfile(os.path.join(dir, f)) and f.endswith('.pth')]
-    # files.sort()
-    files = sorted(files, key=lambda x: func(x))
-    latest_epoch = files[-1]
-    epoch_no = epoch_re.match(latest_epoch).groups()[0]
-    return os.path.join(dir, latest_epoch), int(epoch_no)
-
-
 if __name__ == '__main__':
     """
     修改train.py並使用Pytorch Dataset 做為資料讀取的方式
@@ -236,7 +221,7 @@ if __name__ == '__main__':
     if gpu:
         net.cuda()
         cudnn.benchmark = True  # faster convolutions, but more memory
-    DATASETS_DIR = Path(r'F:\datasets')
+    DATASETS_DIR = get_dataset_root()
     dir_img = DATASETS_DIR.joinpath('COCO', 'coco2017_large_cm', 'A', 'train')
     dir_mask = DATASETS_DIR.joinpath('COCO', 'coco2017_large_cm', 'B', 'train')
     train_dataset = ForgeDataset(dir_img, dir_mask, 1, mask_suffix='', resize=(300, 300))

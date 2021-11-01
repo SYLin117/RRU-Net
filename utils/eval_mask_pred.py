@@ -3,6 +3,8 @@ import cv2
 import re
 import os
 from sklearn.metrics import confusion_matrix
+from pathlib import Path
+from utils import *
 
 
 def evaluate_by_folder(gt_folder, pred_folder):
@@ -30,7 +32,7 @@ def evaluate_by_folder(gt_folder, pred_folder):
             gt_mask = cv2.imread(os.path.join(gt_folder, gt_filename), cv2.IMREAD_GRAYSCALE)
             gt_mask = cv2.morphologyEx(gt_mask, cv2.MORPH_CLOSE, np.ones((3, 3), np.uint8), iterations=3)
             pred_mask = cv2.imread(os.path.join(pred_folder, pred_filename), cv2.IMREAD_GRAYSCALE)
-            pred_mask = cv2.resize(pred_mask, (gt_mask.shape[1], gt_mask.shape[0])) # (width, height)
+            pred_mask = cv2.resize(pred_mask, (gt_mask.shape[1], gt_mask.shape[0]))  # (width, height)
             pred_mask = cv2.morphologyEx(pred_mask, cv2.MORPH_CLOSE, np.ones((3, 3), np.uint8), iterations=3)
             assert gt_mask.shape == pred_mask.shape, "gt and pred got different size, file: {}, gt.shape:{}, pred.shape:{}".format(
                 gt_filename, gt_mask.shape, pred_mask.shape)
@@ -58,8 +60,7 @@ def evaluate_by_folder(gt_folder, pred_folder):
 if __name__ == '__main__':
     print("---main---")
     np.set_printoptions(suppress=True)
-
-    # DATASETS_DIR = Path(r'Z:\media\ian\WD\datasets')
+    DATASETS_DIR = get_dataset_root()
     # dir_img = DATASETS_DIR.joinpath('total_forge/forge')
     # dir_mask = DATASETS_DIR.joinpath('total_forge/mask')
     # val_percent = 0.1
@@ -86,17 +87,17 @@ if __name__ == '__main__':
     # gt_list = [f for f in os.listdir(os.path.join('/media', 'ian', 'WD', 'PythonProject', 'RRU-Net',
     #                                               'data', 'test', 'masks'))]
     #############################################COPY-MOVE DATASET###############################################################
-    # precision, recall, acc, f1 = evaluate_by_folder(
-    #     os.path.join('/media', 'ian', 'WD', 'datasets', 'total_forge', 'CM', 'test_and_train', 'test', 'masks'),
-    #     os.path.join('/media', 'ian', 'WD', 'datasets', 'total_forge', 'CM', 'test_and_train', 'test', 'predict'))
-    # gt_list = [f for f in os.listdir(
-    #     os.path.join('/media', 'ian', 'WD', 'datasets', 'total_forge', 'CM', 'test_and_train', 'test', 'masks'))]
-    #############################################SPLICING DATASET###############################################################
     precision, recall, acc, f1 = evaluate_by_folder(
-        os.path.join('/media', 'ian', 'WD', 'datasets', 'total_forge', 'SP', 'test_and_train', 'test', 'masks'),
-        os.path.join('/media', 'ian', 'WD', 'datasets', 'total_forge', 'SP', 'test_and_train', 'test', 'predict'))
+        os.path.join(DATASETS_DIR, 'total_forge', 'CM', 'test_and_train', 'test', 'masks'),
+        os.path.join(DATASETS_DIR, 'total_forge', 'CM', 'test_and_train', 'test', 'predict'))
     gt_list = [f for f in os.listdir(
-        os.path.join('/media', 'ian', 'WD', 'datasets', 'total_forge', 'SP', 'test_and_train', 'test', 'masks'))]
+        os.path.join(DATASETS_DIR, 'total_forge', 'CM', 'test_and_train', 'test', 'masks'))]
+    #############################################SPLICING DATASET###############################################################
+    # precision, recall, acc, f1 = evaluate_by_folder(
+    #     os.path.join('/media', 'ian', 'WD', 'datasets', 'total_forge', 'SP', 'test_and_train', 'test', 'masks'),
+    #     os.path.join('/media', 'ian', 'WD', 'datasets', 'total_forge', 'SP', 'test_and_train', 'test', 'predict'))
+    # gt_list = [f for f in os.listdir(
+    #     os.path.join('/media', 'ian', 'WD', 'datasets', 'total_forge', 'SP', 'test_and_train', 'test', 'masks'))]
     #############################################################################################################################
     gt_list.sort()
     avg_prec = np.average(precision)

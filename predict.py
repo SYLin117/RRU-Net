@@ -1,10 +1,8 @@
 from tqdm import tqdm
-
-from unet.unet_model import *
 from utils import *
-from utils.data_vis import plot_img_and_mask
 import re
 from glob import glob
+from pathlib import Path
 
 
 def predict_img(net,
@@ -71,17 +69,19 @@ def mask_to_image(mask: np.ndarray):
 if __name__ == "__main__":
     import pathlib
 
+    DATASETS_DIR = get_dataset_root()
     scale, mask_threshold, cpu, viz, no_save = 1, 0.5, False, False, False
     # model: 'Unet', 'Res_Unet', 'Ringed_Res_Unet'
 
     current_path = str(pathlib.Path().resolve())
-    network = 'Ringed_Res_Unet'
+    network = 'Unet'
     ###############################################PREDICT FILES(FOLDER)################################################
     # in_files = os.path.join(current_path, 'data', 'video_test', 'images')
-    # in_files = os.path.join('/media', 'ian', 'WD', 'datasets', 'total_forge', 'CM', 'test_and_train', 'test', 'images')
-    in_files = os.path.join('/media', 'ian', 'WD', 'datasets', 'total_forge', 'SP', 'test_and_train', 'test', 'images')
+    in_files = os.path.join(DATASETS_DIR, 'total_forge', 'CM', 'test_and_train', 'test', 'images')  # copy-move
+    # in_files = os.path.join('/media', 'ian', 'WD', 'datasets', 'total_forge', 'SP', 'test_and_train', 'test', 'images') # splicing
     ##########################################COPY-MOVE MODEL###########################################################
-    model = os.path.join(current_path, 'result', 'logs', 'SP', 'Ringed_Res_Unet', 'epoch50.pth')
+    model = os.path.join(current_path, 'result', 'logs', 'large_cm', network, 'checkpoint_epoch4.pth')
+    # model = os.path.join(current_path, 'result', 'logs', 'SP', network, 'epoch50.pth')
     ##########################################SPLICING MODEL###########################################################
     # model = os.path.join(current_path, 'result', 'logs', 'SP',
     #                      'Ringed_Res_Unet', 'epoch50.pth')
@@ -89,8 +89,10 @@ if __name__ == "__main__":
         net = Unet(n_channels=3, n_classes=1)
     elif network == 'Res_Unet':
         net = Res_Unet(n_channels=3, n_classes=1)
-    else:
+    elif network == 'RUU_Net':
         net = Ringed_Res_Unet(n_channels=3, n_classes=1)
+    elif network == 'TransUnet':
+        net = MyTransUNet(in_channels=3, classes=1)
 
     if not cpu:
         net.cuda()
@@ -113,16 +115,17 @@ if __name__ == "__main__":
             input_files = glob(os.path.join(in_files, '*.*'))
             print("input folder got {} files".format(len(input_files)))
             output_files = get_output_filenames(input_files)
-            for i, filename in enumerate(input_files):
+            for i, filename in enumerate(tqdm(input_files)):
                 img_regex = re.compile("([0-9]+)\.")
                 mask_regex = re.compile("([0-9]+)_OUT\.")
                 file_no = img_regex.match(os.path.split(filename)[1]).groups()[0]
-                print(f'\nPredicting image {filename} ...')
+                # print(f'\nPredicting image {filename} ...')
                 # img = cv2.cvtColor(cv2.imread(filename, cv2.IMREAD_COLOR), cv2.COLOR_BGR2RGB)
-                img = Image.open(filename).convert('RGB') # cause some image got 4 channel(RGBA)
+                img = Image.open(filename).convert('RGB')  # cause some image got 4 channel(RGBA)
                 width, height = img.size
-                if file_no == '001221':
-                    print('001221.tif shape:{}'.format(img.size))
+
+                # if file_no == '001221': # this file got 4 channel
+                #     print('001221.tif shape:{}'.format(img.size))
                 try:
                     mask = predict_img(net=net,
                                        full_img=img,
@@ -136,7 +139,7 @@ if __name__ == "__main__":
                         result = mask_to_image(mask)
                         result = result.resize((width, height))
                         result.save(out_filename)
-                        print(f'Mask saved to {out_filename}')
+                        # print(f'Mask saved to {out_filename}')
                 except RuntimeError as re:
                     print('img:{} predict encounter error:{}'.format(filename, str(re)))
     # if viz:

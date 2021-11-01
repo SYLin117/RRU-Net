@@ -4,6 +4,10 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
+import os
+import re
+from pathlib import Path
+from sys import platform
 
 
 def get_square(img, pos):
@@ -95,6 +99,21 @@ def rle_encode(mask_image):
     return runs
 
 
+def find_latest_epoch(dir):
+    epoch_re = re.compile(r'checkpoint_epoch([0-9]+).pth')
+
+    def func(st):  # I am using your first string as a running example in this code
+        epoch_no = epoch_re.match(st).groups()[0]
+        return int(epoch_no)
+
+    files = [f for f in os.listdir(dir) if os.path.isfile(os.path.join(dir, f)) and f.endswith('.pth')]
+    # files.sort()
+    files = sorted(files, key=lambda x: func(x))
+    latest_epoch = files[-1]
+    epoch_no = epoch_re.match(latest_epoch).groups()[0]
+    return os.path.join(dir, latest_epoch), int(epoch_no)
+
+
 class FocalLoss2d(nn.Module):
     def __init__(self, gamma=0, alpha=None, size_average=True):
         super(FocalLoss2d, self).__init__()
@@ -127,3 +146,20 @@ class FocalLoss2d(nn.Module):
             return loss.mean()
         else:
             return loss.sum()
+
+
+def get_dataset_root():
+    """
+    return 0: linux
+    return 1: OS X
+    return 2: windows
+    """
+    if platform == "linux" or platform == "linux2":
+        # linux
+        return Path(r'/media/ian/WD/datasets')
+    elif platform == "darwin":
+        # OS X
+        raise Exception("not dataset on mac.")
+    elif platform == "win32":
+        # Windows...
+        return Path(r'F:\datasets')

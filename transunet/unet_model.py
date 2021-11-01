@@ -7,6 +7,9 @@ from torchinfo import summary
 
 
 class MyTransUNet(nn.Module):
+    """
+    TransUnet with srm filter
+    """
     def __init__(self, img_dim=300, in_channels=3, classes=1,
                  vit_blocks=12,
                  vit_heads=12,
@@ -21,9 +24,9 @@ class MyTransUNet(nn.Module):
 
         self.srm = SRMConv(in_channels=in_channels, )
         self.transunet = TransUnet(img_dim=img_dim, in_channels=in_channels, classes=classes,
-                                   vit_blocks=12,
-                                   vit_heads=12,
-                                   vit_dim_linear_mhsa_block=3072,
+                                   vit_blocks=vit_blocks,
+                                   vit_heads=vit_heads,
+                                   vit_dim_linear_mhsa_block=vit_dim_linear_mhsa_block,
                                    vit_transformer=None,
                                    vit_channels=None, )
 
@@ -35,19 +38,24 @@ class MyTransUNet(nn.Module):
 
 
 class MyTransUNet2(nn.Module):
-    def __init__(self, in_channels=3, img_dim=256, vit_blocks=8,
-                 vit_dim_linear_mhsa_block=512, classes=2):
+    """
+    original TransUnet
+    """
+    def __init__(self, img_dim=300, in_channels=3, classes=1,
+                 vit_blocks=12,
+                 vit_heads=12,
+                 vit_dim_linear_mhsa_block=3072,
+                 patch_size=8,
+                 vit_transformer_dim=768,
+                 vit_transformer=None,
+                 vit_channels=None, ):
         super().__init__()
         self.n_channels = in_channels
         self.n_classes = classes
-
-        self.srm = SRMConv(in_channels=in_channels, )
         self.transunet = TransUnet(in_channels=in_channels, img_dim=img_dim, vit_blocks=vit_blocks,
                                    vit_dim_linear_mhsa_block=vit_dim_linear_mhsa_block, classes=classes)
 
     def forward(self, x):
-        # srm_feature = self.srm(x)
-        # x = torch.cat((x, srm_feature), 1)
         x = self.transunet(x)
         return x
 

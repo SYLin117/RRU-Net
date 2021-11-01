@@ -13,6 +13,8 @@ import torchvision
 import copy
 import pathlib
 
+from utils import *
+
 from unet.unet_model import *
 from transunet import MyTransUNet, MyTransUNet2
 import re
@@ -178,21 +180,6 @@ class CarvanaDataset(BasicDataset):
 class ForgeDataset(BasicDataset):
     def __init__(self, images_dir, masks_dir, scale=1, mask_suffix='', resize=(256, 256)):
         super().__init__(images_dir, masks_dir, scale, mask_suffix=mask_suffix, resize=resize)
-
-
-def find_latest_epoch(dir):
-    epoch_re = re.compile(r'checkpoint_epoch([0-9]+).pth')
-
-    def func(st):  # I am using your first string as a running example in this code
-        epoch_no = epoch_re.match(st).groups()[0]
-        return int(epoch_no)
-
-    files = [f for f in listdir(dir) if os.path.isfile(os.path.join(dir, f)) and f.endswith('.pth')]
-    # files.sort()
-    files = sorted(files, key=lambda x: func(x))
-    latest_epoch = files[-1]
-    epoch_no = epoch_re.match(latest_epoch).groups()[0]
-    return os.path.join(dir, latest_epoch), int(epoch_no)
 
 
 if __name__ == "__main__":

@@ -1,4 +1,4 @@
-## RRU-Net train for copy-move dataset test result
+## RRU-Net train for copy-move dataset test result(total-forge)
 average precision: 0.21347097996538417
 average recall: 0.16836528783276264
 average accuracy: 0.9292597571016394
@@ -15,7 +15,7 @@ top f1 file: ['003928.png', '001499.jpg', '000905.jpg', '003793.png', '005063.jp
 bot f1 file: ['002279.tif', '002323.jpg', '002263.tif', '002266.tif', '002271.tif', '002226.tif', '002344.jpg', '002339.jpg', '004595.jpg', '004555.jpg']
 top f1's prec : [1. 1. 1. 1. 1. 1. 1. 1. 1. 1.]
 
-## RRU-Net train for splicing dataset test result
+## RRU-Net train for splicing dataset test result(total-forge)
 average precision: 0.4778633810121335
 average recall: 0.5057199356635739
 average accuracy: 0.9432144706323651
@@ -31,3 +31,18 @@ top f1 file: ['000965.jpg', '000943.jpg', '001316.jpg', '000921.jpg', '000917.jp
 bot f1 file: ['004223.jpg', '004165.jpg', '002952.jpg', '004252.jpg', '004248.jpg', '004247.jpg', '004233.jpg', '002831.jpg', '004123.jpg', '003102.jpg']
 top f1's prec : [0.99049139 0.99750156 0.99455015 0.9966271  0.99273458 0.99806616  0.99278152 0.99870172 0.99204157 0.99433269]
 
+## Unet train for "coco-large-cm" "test on total-forge copy-move"
+average precision: 0.2886086909877967
+average recall: 0.2081750820404782
+average accuracy: 0.946051212771849
+average f1 score: 0.20637050216162015
+top prec file: ['005589.jpg', '000645.jpg', '000552.tif', '000590.jpg', '004645.jpg', '003793.png', '000605.jpg', '004982.jpg', '000459.tif', '000367.jpg']
+bot prec file: ['003083.tif', '003109.tif', '003030.tif', '003067.tif', '003077.tif', '003078.tif', '002985.jpg', '003099.tif', '003143.tif', '003134.tif']
+top prec's recall : [0.02859185 0.00082748 0.00032323 0.00481992 0.00141337 0.00360813
+ 0.01277327 0.00304368 0.02827221 0.02463312]
+top recall file: ['005384.jpg', '003536.jpg', '004216.jpg', '004543.jpg', '003508.tif', '004128.jpg', '005340.jpg', '006540.jpg', '001229.jpg', '004405.jpg']
+bot recall file: ['003083.tif', '003109.tif', '003030.tif', '003067.tif', '003077.tif', '003078.tif', '002985.jpg', '003099.tif', '003143.tif', '003134.tif']
+top recall's prec : [1. 1. 1. 1. 1. 1. 1. 1. 1. 1.]
+top f1 file: ['004918.jpg', '004263.jpg', '004543.jpg', '005212.jpg', '002419.tif', '005188.jpg', '006575.jpg', '005311.jpg', '006052.jpg', '004298.jpg']
+bot f1 file: ['003083.tif', '003109.tif', '003030.tif', '003067.tif', '003077.tif', '003078.tif', '002985.jpg', '003099.tif', '003143.tif', '003134.tif']
+top f1's prec : [1. 1. 1. 1. 1. 1. 1. 1. 1. 1.]
