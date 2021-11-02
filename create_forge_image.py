@@ -25,11 +25,13 @@ import shutil
 from tqdm import tqdm
 import copy
 import cv2
+from utils import bb_intersection_over_union
 
 image_index = []
 seg_index = []
 
-gene_dir_path = os.sep.join([COCO_DIR, 'coco2017_test_sp'])
+FORGE_TYPE = 'cm'
+gene_dir_path = os.sep.join([COCO_DIR, 'coco2017_no_overlap_{}'.format(FORGE_TYPE)])
 gene_train_image_path = os.sep.join([gene_dir_path, 'train2017'])
 gene_val_image_path = os.sep.join([gene_dir_path, 'val2017'])
 gene_test_image_path = os.sep.join([gene_dir_path, 'test2017'])
@@ -42,8 +44,9 @@ COCO_TEST = 'test'
 COCO_VAL = 'val'
 
 # DATASET_SIZE = int(len(image_index) / 2)
-DATASET_SIZE = 100
+DATASET_SIZE = 50000
 LOOP_CNT = 10
+OVERLAP_CNT = 20
 
 
 def random_seg_idx():
@@ -156,6 +159,8 @@ def json_add_ann(json_data, img_info, seg_ann, loc_x, dx, loc_y, dy):
 
 
 if __name__ == '__main__':
+
+    # type = 'sp'
     create_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     # MS COCO Dataset
     from coco import coco as my_coco
@@ -210,11 +215,15 @@ if __name__ == '__main__':
                 # random choose a random image for segmentation
                 ##################################################################################################
                 ## for splied
-                seg_img_id = np.random.choice(image_index, 1)[0]  # original coco id
-                if seg_img_id == image_id:
-                    continue
-                ## copy-move
-                # seg_img_id = image_id
+                if FORGE_TYPE == 'sp':
+                    seg_img_id = np.random.choice(image_index, 1)[0]  # original coco id
+                    if seg_img_id == image_id:
+                        continue
+                elif FORGE_TYPE == 'cm':
+                    # copy-move
+                    seg_img_id = image_id
+                else:
+                    raise Exception('type not included')
                 ##################################################################################################
                 seg_img = my_coco_dataset.load_image(seg_img_id)
                 seg_img_info = my_coco_dataset.image_info[seg_img_id]
@@ -252,16 +261,37 @@ if __name__ == '__main__':
                             # 篡改物体的相对位置可移动
                             dx = max_x - min_x
                             dy = max_y - min_y
-                            loc_y, loc_x = random_obj_loc(img.shape[1], img.shape[0], dy, dx)
-
+                            new_loc_valid = True if FORGE_TYPE == 'sp' else False
+                            loc_y, loc_x = None, None
+                            if FORGE_TYPE == 'cm':
+                                try_no = 0
+                                while not new_loc_valid:
+                                    loc_y, loc_x = random_obj_loc(img.shape[1], img.shape[0], dy, dx)
+                                    boxA = [min_x, min_y, max_x, max_y]  # original
+                                    boxB = [loc_x, loc_y, loc_x + dx, loc_y + dy]  # new location
+                                    overlap = bb_intersection_over_union(boxA, boxB)
+                                    if overlap < 0.05:
+                                        new_loc_valid = True
+                                    else:
+                                        print('new location got overlap:{}'.format(overlap))
+                                        try_no += 1
+                                        if try_no > OVERLAP_CNT:
+                                            break
+                            elif FORGE_TYPE == 'sp':
+                                loc_y, loc_x = random_obj_loc(img.shape[1], img.shape[0], dy, dx)
+                            if not new_loc_valid:
+                                print('object can\'t get valid location.')
+                                continue
                             # 被篡改图像长方形区域*（1-mask)+篡改物体长方形区域*mask
-                            img_np[loc_y:loc_y + dy, loc_x:loc_x + dx, :] = img_np[loc_y:loc_y + dy, loc_x:loc_x + dx,
-                                                                            :] * (np.ones_like(
-                                mask) - mask) + seg_img_np * mask
+                            img_np[loc_y:loc_y + dy, loc_x:loc_x + dx, :] = \
+                                img_np[loc_y:loc_y + dy, loc_x:loc_x + dx, :] * \
+                                (np.ones_like(mask) - mask) + \
+                                seg_img_np * mask
                             mask_tmp = np.zeros_like(img_np)
-                            mask_tmp[loc_y:loc_y + dy, loc_x:loc_x + dx, :] = mask_tmp[loc_y:loc_y + dy,
-                                                                              loc_x:loc_x + dx, :] * (np.ones_like(
-                                mask) - mask) + seg_img_np * (mask * 255)
+                            mask_tmp[loc_y:loc_y + dy, loc_x:loc_x + dx, :] = \
+                                mask_tmp[loc_y:loc_y + dy, loc_x:loc_x + dx, :] * \
+                                (np.ones_like(mask) - mask) + \
+                                seg_img_np * (mask * 255)
 
                             kernel = np.ones((3, 3), np.uint8)
                             mask_tmp[mask_tmp >= 1] = 255
@@ -294,9 +324,9 @@ if __name__ == '__main__':
             pbar.update(1)
             # if loop_counter < LOOP_CNT:
             #     count += 1
-            type = train_val_test()
-            img_name = "sp_{}".format(f'{count:06}')
-            json_add_image(json_data=train_json, img_info=img_info, type=type, img=new_img, mask=mask_img,
+            split_type = train_val_test()
+            img_name = "{}_{}".format(FORGE_TYPE, f'{count:06}')
+            json_add_image(json_data=train_json, img_info=img_info, type=split_type, img=new_img, mask=mask_img,
                            img_name=img_name, mask_name=img_name)
             # if type == COCO_TRAIN:
             #     json_add_image(json_data=train_json, img_info=img_info, type=type, img=new_img, mask=mask_img,
@@ -320,12 +350,12 @@ if __name__ == '__main__':
 
         else:
             ## no modification, so no need to add ann json
-            type = train_val_test()
-            if type == COCO_TRAIN:
+            split_type = train_val_test()
+            if split_type == COCO_TRAIN:
                 json_add_image(json_data=train_json, img_info=img_info, type=type)
-            elif type == COCO_VAL:
+            elif split_type == COCO_VAL:
                 json_add_image(json_data=val_json, img_info=img_info, type=type)
-            elif type == COCO_TEST:
+            elif split_type == COCO_TEST:
                 firstpos = img_info['path'].rfind("/")
                 filename = img_info['path'][firstpos + 1:]
 
