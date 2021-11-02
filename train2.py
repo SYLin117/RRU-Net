@@ -24,12 +24,12 @@ def train_net(net,
               val_percent=0.05,
               save_cp=True,
               gpu=False,
-              img_scale=1,
+              resize=(256, 256),
               train_dataset=None,
               val_dataset=None,
               dir_logs=None,
               model_name='no-model_name',
-              resume=None,
+              resume=False,
               resume_id=None,
               latest_epoch=0, ):
     # training images are square
@@ -55,10 +55,10 @@ def train_net(net,
     experiment.name = model_name
     if not resume:
         experiment.config.update(dict(epochs=epochs, batch_size=batch_size, learning_rate=lr,
-                                      val_percent=val_percent, resize=(300, 300), checkpoints=save_cp, gpu=gpu))
+                                      val_percent=val_percent, resize=resize, checkpoints=save_cp, gpu=gpu))
     else:
         experiment.config.update(dict(epochs=latest_epoch, batch_size=batch_size, learning_rate=lr,
-                                      val_percent=val_percent, resize=(300, 300), checkpoints=save_cp, gpu=gpu))
+                                      val_percent=val_percent, resize=resize, checkpoints=save_cp, gpu=gpu))
     print('''
     Starting training:
         Epochs: {}
@@ -192,12 +192,13 @@ if __name__ == '__main__':
     """
     import pathlib
 
-    epochs, batchsize, scale, gpu = 50, 6, 1, True
+    epochs, batchsize, scale, gpu = 50, 4, 1, True
     lr = 1e-5
-    ft = True
+    ft = False
     dataset_name = 'large_cm'
-    model = 'Unet'
+    model = 'MyTransUnet2'
     CURRENT_PATH = str(pathlib.Path().resolve())
+    resize = (512, 512)
 
     dir_logs = os.path.join(CURRENT_PATH, 'result', 'logs', dataset_name, model)
     if not os.path.exists(dir_logs):
@@ -208,9 +209,15 @@ if __name__ == '__main__':
         net = Res_Unet(n_channels=3, n_classes=1)
     elif model == 'Ringed_Res_Unet':
         net = Ringed_Res_Unet(n_channels=3, n_classes=1)
-    elif model == 'TransUnet':
-        net = MyTransUNet(in_channels=3, classes=1)
+    elif model == 'MyTransUnet':
+        net = MyTransUNet(in_channels=3, classes=1, img_dim=resize[0])
+    elif model == 'MyTransUnet2':
+        net = MyTransUNet2(in_channels=3, classes=1, img_dim=resize[0])
+    else:
+        raise Exception("model not implements.")
 
+    id = None
+    latest_epoch = None
     if ft:
         fine_tuning_model, latest_epoch = find_latest_epoch(
             os.path.join(CURRENT_PATH, 'result', 'logs', dataset_name, model, ))
@@ -218,16 +225,18 @@ if __name__ == '__main__':
         epochs = epochs - latest_epoch
         print('Model loaded from {}'.format(fine_tuning_model))
         id = '2f3silq6'
+
     if gpu:
         net.cuda()
         cudnn.benchmark = True  # faster convolutions, but more memory
+
     DATASETS_DIR = get_dataset_root()
     dir_img = DATASETS_DIR.joinpath('COCO', 'coco2017_large_cm', 'A', 'train')
     dir_mask = DATASETS_DIR.joinpath('COCO', 'coco2017_large_cm', 'B', 'train')
-    train_dataset = ForgeDataset(dir_img, dir_mask, 1, mask_suffix='', resize=(300, 300))
+    train_dataset = ForgeDataset(dir_img, dir_mask, 1, mask_suffix='', resize=resize)
     dir_img_val = DATASETS_DIR.joinpath('COCO', 'coco2017_large_cm', 'A', 'val')
     dir_mask_val = DATASETS_DIR.joinpath('COCO', 'coco2017_large_cm', 'B', 'val')
-    val_dataset = ForgeDataset(dir_img_val, dir_mask_val, 1, mask_suffix='', resize=(300, 300))
+    val_dataset = ForgeDataset(dir_img_val, dir_mask_val, 1, mask_suffix='', resize=resize)
     train_net(net=net,
               epochs=epochs,
               batch_size=batchsize,
@@ -235,7 +244,7 @@ if __name__ == '__main__':
               val_percent=0.1,
               save_cp=True,
               gpu=gpu,
-              img_scale=scale,
+              resize=resize,
               train_dataset=train_dataset,
               val_dataset=val_dataset,
               dir_logs=dir_logs,

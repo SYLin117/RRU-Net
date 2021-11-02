@@ -1,2 +1,2 @@
-from .unet_model import MyTransUNet
-from .unet_model import MyTransUNet2
+from .transunet_model import MyTransUNet
+from .transunet_model import MyTransUNet2
