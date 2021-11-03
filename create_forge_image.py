@@ -2,11 +2,11 @@ import os
 import sys
 import json
 import random
+from utils import get_dataset_root
 
 # Root directory of the project
 ROOT_DIR = os.path.abspath("../../")
-DATASET_ROOT = os.path.abspath("/media/ian/WD/datasets")
-DATASET_ROOT = os.path.abspath("F:\\datasets")
+DATASET_ROOT = get_dataset_root()
 # DATASET_ROOT = os.path.abspath("/run/user/1000/gvfs/smb-share:server=ubuntu1070.local,share=samba-share")
 COCO_2017_DIR = os.path.join(DATASET_ROOT, "COCO", "coco2017")
 COCO_DIR = os.path.join(DATASET_ROOT, "COCO")

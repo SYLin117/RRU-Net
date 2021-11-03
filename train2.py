@@ -103,7 +103,7 @@ def train_net(net,
         epoch_loss = 0
 
         for i, b in enumerate(tqdm(train_loader)):
-            global_step += 1 * batch_size
+            global_step += 1
             start_batch = time.time()
             # imgs = np.array([i[0] for i in b]).astype(np.float32)
             # true_masks = np.array([i[1] for i in b]).astype(np.float32) / 255.
@@ -137,7 +137,7 @@ def train_net(net,
                 'step': global_step,
                 'epoch': epoch
             })
-            if global_step % int(n_train * 0.01) == 0:
+            if global_step % 1000 == 0:
                 random_index = int(np.random.random() * len(val_set))
                 single_val = val_set[random_index]
                 val_true_mask = single_val['mask']  # on cpu
@@ -231,11 +231,11 @@ if __name__ == '__main__':
         cudnn.benchmark = True  # faster convolutions, but more memory
 
     DATASETS_DIR = get_dataset_root()
-    dir_img = DATASETS_DIR.joinpath('COCO', 'coco2017_large_cm', 'A', 'train')
-    dir_mask = DATASETS_DIR.joinpath('COCO', 'coco2017_large_cm', 'B', 'train')
+    dir_img = DATASETS_DIR.joinpath('COCO', 'coco2017_no_overlap_cm', 'A', 'train')
+    dir_mask = DATASETS_DIR.joinpath('COCO', 'coco2017_no_overlap_cm', 'B', 'train')
     train_dataset = ForgeDataset(dir_img, dir_mask, 1, mask_suffix='', resize=resize)
-    dir_img_val = DATASETS_DIR.joinpath('COCO', 'coco2017_large_cm', 'A', 'val')
-    dir_mask_val = DATASETS_DIR.joinpath('COCO', 'coco2017_large_cm', 'B', 'val')
+    dir_img_val = DATASETS_DIR.joinpath('COCO', 'coco2017_no_overlap_cm', 'A', 'val')
+    dir_mask_val = DATASETS_DIR.joinpath('COCO', 'coco2017_no_overlap_cm', 'B', 'val')
     val_dataset = ForgeDataset(dir_img_val, dir_mask_val, 1, mask_suffix='', resize=resize)
     train_net(net=net,
               epochs=epochs,
