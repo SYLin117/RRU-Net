@@ -114,6 +114,7 @@ def find_latest_epoch(dir):
     return os.path.join(dir, latest_epoch), int(epoch_no)
 
 
+
 class FocalLoss2d(nn.Module):
     def __init__(self, gamma=0, alpha=None, size_average=True):
         super(FocalLoss2d, self).__init__()

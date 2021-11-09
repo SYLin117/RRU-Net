@@ -5,8 +5,8 @@ from .transunet_parts import *
 
 
 class MyTransUNet(nn.Module):
-    def __init__(self, in_channels=3, img_dim=256, vit_blocks=8,
-                 vit_dim_linear_mhsa_block=512, classes=2):
+    def __init__(self, in_channels=3, img_dim=256, vit_blocks=4,
+                 vit_dim_linear_mhsa_block=1024, classes=2):
         super().__init__()
         self.n_channels = in_channels
         self.n_classes = classes
@@ -23,8 +23,8 @@ class MyTransUNet(nn.Module):
 
 
 class MyTransUNet2(nn.Module):
-    def __init__(self, in_channels=3, img_dim=256, vit_blocks=8,
-                 vit_dim_linear_mhsa_block=512, classes=2):
+    def __init__(self, in_channels=3, img_dim=256, vit_blocks=4,
+                 vit_dim_linear_mhsa_block=1024, classes=1):
         super().__init__()
         self.n_channels = in_channels
         self.n_classes = classes
@@ -41,5 +41,6 @@ class MyTransUNet2(nn.Module):
 
 
 if __name__ == '__main__':
-    net = MyTransUNet2(classes=1, img_dim=512)
+    net = TransUnet(in_channels=3, img_dim=256, vit_blocks=6,
+                    vit_dim_linear_mhsa_block=1024, classes=1)
     summary(net, input_size=(1, 3, 512, 512), col_names=("input_size", "output_size"))

@@ -3,22 +3,25 @@ from utils import *
 import re
 from glob import glob
 from pathlib import Path
+from sklearn.metrics import roc_curve, auc, roc_auc_score
+import time
+import torchvision.transforms as T
+from torchvision.transforms import InterpolationMode
 
 
 def predict_img(net,
                 full_img,
-                scale_factor=0.5,
-                out_threshold=0.5,
+                resize=(300, 300),
                 use_gpu=True):
     # net.eval()
 
     # img = resize_and_crop(full_img, scale=scale_factor).astype(np.float32)
     # img = np.transpose(normalize(img), (2, 0, 1))
     # img = torch.from_numpy(img).unsqueeze(dim=0)
-    tf = torchvision.transforms.Compose([
-        torchvision.transforms.Resize([300, 300], Image.BICUBIC),
-        torchvision.transforms.ToTensor(),
-        torchvision.transforms.Normalize(
+    tf = T.Compose([
+        T.Resize([resize[0], resize[1]], InterpolationMode.BICUBIC),
+        T.ToTensor(),
+        T.Normalize(
             mean=[0.485, 0.456, 0.406],
             std=[0.229, 0.224, 0.225],
         ),
@@ -31,8 +34,8 @@ def predict_img(net,
     with torch.no_grad():
         mask = net(img)
         mask = torch.sigmoid(mask).squeeze().cpu().numpy()
-
-    return mask > out_threshold
+    # return mask > out_threshold
+    return mask
 
 
 def get_output_filenames(file_list, predict_subfolder='predict'):
@@ -70,17 +73,23 @@ if __name__ == "__main__":
     import pathlib
 
     DATASETS_DIR = get_dataset_root()
-    scale, mask_threshold, cpu, viz, no_save = 1, 0.5, False, False, False
+    scale, mask_threshold, cpu, viz, no_save = 1, 0.5, False, False, True
     # model: 'Unet', 'Res_Unet', 'Ringed_Res_Unet'
 
     current_path = str(pathlib.Path().resolve())
-    network = 'Unet'
+    network = 'Ringed_Res_Unet'
+    resize = (300, 300)
     ###############################################PREDICT FILES(FOLDER)################################################
     # in_files = os.path.join(current_path, 'data', 'video_test', 'images')
-    in_files = os.path.join(DATASETS_DIR, 'total_forge', 'CM', 'test_and_train', 'test', 'images')  # copy-move
-    # in_files = os.path.join('/media', 'ian', 'WD', 'datasets', 'total_forge', 'SP', 'test_and_train', 'test', 'images') # splicing
+    # in_files = os.path.join(DATASETS_DIR, 'total_forge', 'train_and_test', 'test', 'images')  # total
+    # gt_files = os.path.join(DATASETS_DIR, 'total_forge', 'train_and_test', 'test', 'masks')  # total
+    # in_files = os.path.join(DATASETS_DIR, 'total_forge', 'CM', 'test_and_train', 'test', 'images')  # copy-move
+    # gt_files = os.path.join(DATASETS_DIR, 'total_forge', 'CM', 'test_and_train', 'test', 'masks')  # copy-move
+    in_files = os.path.join(DATASETS_DIR, 'total_forge', 'SP', 'test_and_train', 'test', 'images')  # splicing
+    gt_files = os.path.join(DATASETS_DIR, 'total_forge', 'SP', 'test_and_train', 'test', 'masks')  # splicing
     ##########################################COPY-MOVE MODEL###########################################################
-    model = os.path.join(current_path, 'result', 'logs', 'large_cm', network, 'checkpoint_epoch4.pth')
+    model = os.path.join(current_path, 'result', 'logs', 'Total', network, 'checkpoint_epoch50.pth')
+    # model = os.path.join(current_path, 'result', 'logs', 'large_cm', network, 'checkpoint_epoch47.pth')
     # model = os.path.join(current_path, 'result', 'logs', 'SP', network, 'epoch50.pth')
     ##########################################SPLICING MODEL###########################################################
     # model = os.path.join(current_path, 'result', 'logs', 'SP',
@@ -89,10 +98,14 @@ if __name__ == "__main__":
         net = Unet(n_channels=3, n_classes=1)
     elif network == 'Res_Unet':
         net = Res_Unet(n_channels=3, n_classes=1)
-    elif network == 'RUU_Net':
+    elif network == 'Ringed_Res_Unet':
         net = Ringed_Res_Unet(n_channels=3, n_classes=1)
-    elif network == 'TransUnet':
-        net = MyTransUNet(in_channels=3, classes=1)
+    elif network == 'MyTransUnet':
+        net = MyTransUNet(in_channels=3, classes=1, img_dim=resize[0])
+    elif network == 'MyTransUnet2':
+        net = MyTransUNet2(in_channels=3, classes=1, img_dim=resize[0])
+    else:
+        raise Exception("model not implements.")
 
     if not cpu:
         net.cuda()
@@ -111,37 +124,62 @@ if __name__ == "__main__":
     if isinstance(in_files, str):
         if os.path.isfile(in_files):
             print("path is file")
-        elif os.path.isdir(in_files):
+        elif os.path.isdir(in_files):  # in_files是資料夾
+            auc_list = list()
+            time_list = list()
             input_files = glob(os.path.join(in_files, '*.*'))
-            print("input folder got {} files".format(len(input_files)))
+            gt_masks = glob(os.path.join(gt_files, '*.*'))
+
+            input_files = sorted(input_files)
+            gt_masks = sorted(gt_masks)
+
+            # print("input folder got {} files".format(len(input_files)))
             output_files = get_output_filenames(input_files)
             for i, filename in enumerate(tqdm(input_files)):
                 img_regex = re.compile("([0-9]+)\.")
                 mask_regex = re.compile("([0-9]+)_OUT\.")
+                gt_filename = gt_masks[i]
+                gt_no = img_regex.match(os.path.split(gt_filename)[1]).groups()[0]
                 file_no = img_regex.match(os.path.split(filename)[1]).groups()[0]
+                assert int(file_no) == int(gt_no)
+                gt_mask = cv2.imread(gt_filename, cv2.IMREAD_GRAYSCALE)
+                (_, gt_mask) = cv2.threshold(gt_mask, 125, 1, cv2.THRESH_BINARY)
+                # gt_mask = np.where(gt_mask >= 1, 1, 0)
+                cv2.imshow('mask:'.format(gt_no), gt_mask)
+                cv2.waitKey(0)
+                cv2.destroyAllWindows()
                 # print(f'\nPredicting image {filename} ...')
                 # img = cv2.cvtColor(cv2.imread(filename, cv2.IMREAD_COLOR), cv2.COLOR_BGR2RGB)
-                img = Image.open(filename).convert('RGB')  # cause some image got 4 channel(RGBA)
+                img = Image.open(filename).convert('RGB')  # cause some image got 4 channel(RGBA), eg:001221 file
                 width, height = img.size
 
-                # if file_no == '001221': # this file got 4 channel
-                #     print('001221.tif shape:{}'.format(img.size))
                 try:
+                    start_time = time.time()
                     mask = predict_img(net=net,
                                        full_img=img,
-                                       scale_factor=scale,
-                                       out_threshold=mask_threshold,
+                                       resize=resize,
                                        use_gpu=not cpu)
+                    # print("predict time:{}".format(time.time() - start_time))
+                    time_list.append(time.time() - start_time)
+                    save_mask = mask > mask_threshold
+                    mask = cv2.resize(mask, (gt_mask.shape[1], gt_mask.shape[0]), cv2.INTER_CUBIC)
+                    y_test = gt_mask.flatten()
+                    y_pred = mask.flatten()
+                    fpr, tpr, _ = roc_curve(y_test, y_pred)
+                    roc_auc = auc(fpr, tpr)
+                    auc_list.append(roc_auc)
                     if not no_save:
                         out_filename = output_files[i]
                         mask_no = mask_regex.match(os.path.split(out_filename)[1]).groups()[0]
                         assert int(file_no) == int(mask_no), "file number and mask number not match"
-                        result = mask_to_image(mask)
+                        result = mask_to_image(save_mask)
                         result = result.resize((width, height))
                         result.save(out_filename)
                         # print(f'Mask saved to {out_filename}')
                 except RuntimeError as re:
                     print('img:{} predict encounter error:{}'.format(filename, str(re)))
+            print("average time:{}".format(sum(time_list) / len(time_list)))
+            print("average auc: {}".format(sum(auc_list) / len(auc_list)))
     # if viz:
     #     print("Visualizing results for image {}, close to continue ...".format(j))
     #     plot_img_and_mask(img, mask)

@@ -195,10 +195,10 @@ if __name__ == '__main__':
     epochs, batchsize, scale, gpu = 50, 4, 1, True
     lr = 1e-5
     ft = False
-    dataset_name = 'large_cm'
-    model = 'MyTransUnet2'
+    dataset_name = 'Total'
+    model = 'Unet'
     CURRENT_PATH = str(pathlib.Path().resolve())
-    resize = (512, 512)
+    resize = (300, 300)
 
     dir_logs = os.path.join(CURRENT_PATH, 'result', 'logs', dataset_name, model)
     if not os.path.exists(dir_logs):

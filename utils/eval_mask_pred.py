@@ -79,6 +79,12 @@ if __name__ == '__main__':
     # print((gt_mask == pred_mask))
     # unique, counts = np.unique((gt_mask == pred_mask), return_counts=True)
     # print(dict(zip(unique, counts)))
+    #############################################TOTAL-FORGE DATASET###############################################################
+    precision, recall, acc, f1 = evaluate_by_folder(
+        os.path.join(DATASETS_DIR, 'total_forge', 'train_and_test', 'test', 'masks'),
+        os.path.join(DATASETS_DIR, 'total_forge',  'train_and_test', 'test', 'predict'))
+    gt_list = [f for f in os.listdir(
+        os.path.join(DATASETS_DIR, 'total_forge',  'train_and_test', 'test', 'masks'))]
     #############################################################################################################################
     # precision, recall, acc, f1 = evaluate_by_folder(os.path.join('/media', 'ian', 'WD', 'PythonProject', 'RRU-Net',
     #                                                              'data', 'video_test', 'masks'),
@@ -87,11 +93,11 @@ if __name__ == '__main__':
     # gt_list = [f for f in os.listdir(os.path.join('/media', 'ian', 'WD', 'PythonProject', 'RRU-Net',
     #                                               'data', 'test', 'masks'))]
     #############################################COPY-MOVE DATASET###############################################################
-    precision, recall, acc, f1 = evaluate_by_folder(
-        os.path.join(DATASETS_DIR, 'total_forge', 'CM', 'test_and_train', 'test', 'masks'),
-        os.path.join(DATASETS_DIR, 'total_forge', 'CM', 'test_and_train', 'test', 'predict'))
-    gt_list = [f for f in os.listdir(
-        os.path.join(DATASETS_DIR, 'total_forge', 'CM', 'test_and_train', 'test', 'masks'))]
+    # precision, recall, acc, f1 = evaluate_by_folder(
+    #     os.path.join(DATASETS_DIR, 'total_forge', 'CM', 'test_and_train', 'test', 'masks'),
+    #     os.path.join(DATASETS_DIR, 'total_forge', 'CM', 'test_and_train', 'test', 'predict'))
+    # gt_list = [f for f in os.listdir(
+    #     os.path.join(DATASETS_DIR, 'total_forge', 'CM', 'test_and_train', 'test', 'masks'))]
     #############################################SPLICING DATASET###############################################################
     # precision, recall, acc, f1 = evaluate_by_folder(
     #     os.path.join('/media', 'ian', 'WD', 'datasets', 'total_forge', 'SP', 'test_and_train', 'test', 'masks'),

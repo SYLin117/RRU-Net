@@ -29,8 +29,8 @@ def bb_intersection_over_union(boxA, boxB):
 
 if __name__ == '__main__':
     # Pointing out a wrong IoU implementation in https://www.pyimagesearch.com/2016/11/07/intersection-over-union-iou-for-object-detection/
-    boxA = [0., 0., 10., 10.]
-    boxB = [1., 1., 11., 11.]
+    boxA = [1., 1., 11., 11.]
+    boxB = [0., 0., 10., 10.]
 
     correct = bb_intersection_over_union(boxA, boxB)
     print('Correct solution - also analytical: {0}\n'

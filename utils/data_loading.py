@@ -9,7 +9,8 @@ import numpy as np
 from PIL import Image
 import torch
 from torch.utils.data import Dataset, DataLoader, random_split
-import torchvision
+import torchvision.transforms as T
+import torchvision.transforms.functional as TF
 import copy
 import pathlib
 
@@ -89,20 +90,21 @@ class BasicDataset(Dataset):
 
         if is_mask:  # 確保mask的值是0 or 1
             img = np.where(img >= 1, 1, 0)
+            # (_, img) = cv2.threshold(img, 125, 1, cv2.THRESH_BINARY)
 
         if not is_mask:
             # img = img / 255
-            transform = torchvision.transforms.Compose([
-                torchvision.transforms.ToTensor(),
-                torchvision.transforms.Normalize(
+            transform = T.Compose([
+                T.ToTensor(),
+                T.Normalize(
                     mean=[0.485, 0.456, 0.406],
                     std=[0.229, 0.224, 0.225],
                 ),
             ])
             img = transform(img)
         elif is_mask:
-            transform = torchvision.transforms.Compose([
-                torchvision.transforms.ToTensor(),
+            transform = T.Compose([
+                T.ToTensor(),
             ])
             img = transform(img)
 
@@ -114,6 +116,50 @@ class BasicDataset(Dataset):
         #     img = img.transpose((2, 0, 1))
         #     img = img.transpose(0, 1)
         return img
+
+    def transform(self, image, mask, resize=(300, 300)):
+
+        # Transform to tensor
+        img_transform = T.Compose([
+            T.ToTensor(),
+            T.Normalize(
+                mean=[0.485, 0.456, 0.406],
+                std=[0.229, 0.224, 0.225],
+            ),
+        ])
+        image = img_transform(image)
+
+        mask_transform = T.Compose([
+            T.ToTensor(),
+        ])
+        # (_, mask) = cv2.threshold(mask, 1, 1, cv2.THRESH_BINARY)
+        mask = np.where(mask >= 1, 1, 0)
+        mask = mask_transform(mask)
+
+        # Resize
+        resize = T.Resize(size=resize)
+        image = resize(image)
+        mask = resize(mask)
+
+        ### Random crop
+        # i, j, h, w = T.RandomCrop.get_params(
+        #     image, output_size=(512, 512))
+        # image = TF.crop(image, i, j, h, w)
+        # mask = TF.crop(mask, i, j, h, w)
+
+        # Random horizontal flipping
+        if random.random() > 0.5:
+            image = TF.hflip(image)
+            mask = TF.hflip(mask)
+
+        # Random vertical flipping
+        if random.random() > 0.5:
+            image = TF.vflip(image)
+            mask = TF.vflip(mask)
+
+        # image = TF.to_tensor(image)
+        # mask = TF.to_tensor(mask)
+        return image, mask
 
     @staticmethod
     def load(filename, is_mask=False):
@@ -149,11 +195,14 @@ class BasicDataset(Dataset):
         assert len(mask_file) == 1, f'Either no mask or multiple masks found for the ID {name}: {mask_file}'
         pil_img = self.load(img_file[0])
         pil_mask = self.load(mask_file[0], is_mask=True)
+        # pil_img = Image.open(img_file[0])
+        # pil_mask = Image.open(mask_file[0]).convert('L')
         img = None
         mask = None
         try:
-            img = self.preprocess2(pil_img, self.scale, is_mask=False, resize=self.resize, )
-            mask = self.preprocess2(pil_mask, self.scale, is_mask=True, resize=self.resize, )
+            # img = self.preprocess2(pil_img, self.scale, is_mask=False, resize=self.resize, )
+            # mask = self.preprocess2(pil_mask, self.scale, is_mask=True, resize=self.resize, )
+            img, mask = self.transform(pil_img, pil_mask)
         except:
             print("encounter error during preprocess : {}".format(name))
             raise RuntimeError
@@ -184,6 +233,7 @@ class ForgeDataset(BasicDataset):
 
 if __name__ == "__main__":
     print("___main___")
+    ################################### Test ForgeDataset ########################################################
     ROOT_PATH = str(pathlib.Path().resolve().parent)
     # CURRENT_PATH = os.path.dirname(os.path.abspath(__file__))
     ## test dataset valid
@@ -196,39 +246,41 @@ if __name__ == "__main__":
     loader_args = dict(batch_size=2, num_workers=4, pin_memory=True)
     dataloader = DataLoader(dataset, shuffle=True, **loader_args)
     dataiter = iter(dataloader)
-    # idx = 0
-    # while True:
-    #     try:
-    #         features, labels = next(dataiter)
-    #         print('number: {}'.format(idx))
-    #         idx += 1
-    #     except StopIteration:
-    #         break
-    # features, labels =dataiter.next()
-    random_index = int(np.random.random() * len(dataset))
-    single_example = dataset[random_index]
-    true_mask = single_example['mask']
-    img = single_example['image']
-    img = img.unsqueeze(dim=0)
-    model = 'Unet'
-    latest_model, latest_epoch = find_latest_epoch(
-        os.path.join(ROOT_PATH, 'result', 'logs', 'large_cm', model, ))
-    if model == 'Unet':
-        net = Unet(n_channels=3, n_classes=1)
-    elif model == 'Res_Unet':
-        net = Res_Unet(n_channels=3, n_classes=1)
-    elif model == 'Ringed_Res_Unet':
-        net = Ringed_Res_Unet(n_channels=3, n_classes=1)
-    elif model == 'TransUnet':
-        net = MyTransUNet(in_channels=3, classes=1)
-    net.load_state_dict(torch.load(latest_model))
-    with torch.no_grad():
-        pred_mask = net(img)
-        pred_mask = torch.sigmoid(pred_mask).squeeze().cpu()
-    true_mask = true_mask.squeeze()
-    print(img.size())
-    print(pred_mask.size())
-    print(true_mask.size())
+    idx = 0
+    while True:
+        try:
+            features, labels = next(dataiter)
+            print('number: {}'.format(idx))
+            idx += 1
+        except StopIteration:
+            break
+    features, labels = dataiter.next()
+
+    #################################################################################################################
+    # random_index = int(np.random.random() * len(dataset))
+    # single_example = dataset[random_index]
+    # true_mask = single_example['mask']
+    # img = single_example['image']
+    # img = img.unsqueeze(dim=0)
+    # model = 'Unet'
+    # latest_model, latest_epoch = find_latest_epoch(
+    #     os.path.join(ROOT_PATH, 'result', 'logs', 'large_cm', model, ))
+    # if model == 'Unet':
+    #     net = Unet(n_channels=3, n_classes=1)
+    # elif model == 'Res_Unet':
+    #     net = Res_Unet(n_channels=3, n_classes=1)
+    # elif model == 'Ringed_Res_Unet':
+    #     net = Ringed_Res_Unet(n_channels=3, n_classes=1)
+    # elif model == 'TransUnet':
+    #     net = MyTransUNet(in_channels=3, classes=1)
+    # net.load_state_dict(torch.load(latest_model))
+    # with torch.no_grad():
+    #     pred_mask = net(img)
+    #     pred_mask = torch.sigmoid(pred_mask).squeeze().cpu()
+    # true_mask = true_mask.squeeze()
+    # print(img.size())
+    # print(pred_mask.size())
+    # print(true_mask.size())
     #################################################################################################################
     # masks = list(Path(dir_mask).glob("*.*"))
     # print(len(masks))

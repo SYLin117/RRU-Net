@@ -6,12 +6,18 @@ import os
 import re
 import imutils
 from shutil import copyfile
-from random import randint
+from random import randint, shuffle
 from tqdm import tqdm
 from PIL import Image
 from os import path
 import torch
 from pathlib import Path
+import xlsxwriter
+import shutil
+
+from utils import get_dataset_root
+
+DATASET_ROOT = get_dataset_root()
 
 
 def split_train_test(orig_folder, gt_folder, new_folder):
@@ -502,6 +508,35 @@ def devide_dataset_to_small_patches(images_dir, masks_dir, new_dir):
             count += 1
 
 
+def combine_forge_and_rename(destinate_dir, *dataset_dirs):
+    class_to_int = {"cm": 0, "sp": 1}
+    dataset_number = len(dataset_dirs)
+    files = list()
+    for i, dir in enumerate(dataset_dirs):
+        print(dir)
+        locals()['folder{}'.format(i + 1)] = dir
+        files = files + glob.glob(os.path.join(dir, '*.*'))
+    shuffle(files)
+
+    workbook = xlsxwriter.Workbook('test.xlsx')
+    worksheet = workbook.add_worksheet()
+    worksheet.write('A1', 'file')
+    worksheet.write('B1', 'original_path')
+    worksheet.write('C1', 'class')
+    worksheet.write('D1', 'predict')
+    for i, file in enumerate(files):
+        img_name = "{}.jpg".format(f'{i:06}')
+        class_type = os.path.split(file)[1].split("_")[0]
+        shutil.copyfile(file, os.path.join(destinate_dir, img_name))
+
+        worksheet.write('A{}'.format(i + 2), img_name)
+        worksheet.write('B{}'.format(i + 2), file)
+        worksheet.write('C{}'.format(i + 2), class_to_int[class_type])
+
+    print(len(files))
+    workbook.close()
+
+
 if __name__ == '__main__':
     print("__main__")
     # casia_v1_mask()
@@ -531,8 +566,13 @@ if __name__ == '__main__':
     #                                 r'/media/ian/WD/datasets/total_forge/train_and_test/train/masks',
     #                                 r'/media/ian/WD/datasets/total_forge/train_and_test/train_small_patch(2nd)')
     ######################################################################################
-    copy_move_folder = os.path.join('/media', 'ian', 'WD', 'datasets', 'total_forge', 'SP', )
-    # make_video_to_image(video_folder)
-    # combine_video_image(video_folder)
-    split_train_test(os.path.join(copy_move_folder, 'forge'), os.path.join(copy_move_folder, 'mask'),
-                     os.path.join(copy_move_folder, 'test_and_train'))
+    # copy_move_folder = os.path.join('/media', 'ian', 'WD', 'datasets', 'total_forge', 'SP', )
+    ## make_video_to_image(video_folder)
+    ## combine_video_image(video_folder)
+    # split_train_test(os.path.join(copy_move_folder, 'forge'), os.path.join(copy_move_folder, 'mask'),
+    #                  os.path.join(copy_move_folder, 'test_and_train'))
+    ######################################################################################
+    ######################################################################################
+    combine_forge_and_rename(DATASET_ROOT.joinpath('COCO', 'large_cm_sp', 'test'),
+                             DATASET_ROOT.joinpath('COCO', 'coco2017_large_sp', 'A', 'test'),
+                             DATASET_ROOT.joinpath('COCO', 'coco2017_no_overlap_cm', 'A', 'test'))

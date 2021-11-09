@@ -195,7 +195,7 @@ class RRU_first_down(nn.Module):
         r1 = self.relu(ft1 + self.res_conv(x))
         # the second ring conv
         ft2 = self.res_conv_back(r1)
-        x = torch.mul(1 + F.sigmoid(ft2), x)
+        x = torch.mul(1 + torch.sigmoid(ft2), x)
         # the third ring conv
         ft3 = self.conv(x)
         r3 = self.relu(ft3 + self.res_conv(x))
@@ -223,7 +223,7 @@ class RRU_down(nn.Module):
         r1 = self.relu(ft1 + self.res_conv(x))
         # the second ring conv
         ft2 = self.res_conv_back(r1)
-        x = torch.mul(1 + F.sigmoid(ft2), x)
+        x = torch.mul(1 + torch.sigmoid(ft2), x)
         # the third ring conv
         ft3 = self.conv(x)
         r3 = self.relu(ft3 + self.res_conv(x))
@@ -265,7 +265,7 @@ class RRU_up(nn.Module):
         r1 = self.relu(self.res_conv(x) + ft1)
         # the second ring conv
         ft2 = self.res_conv_back(r1)
-        x = torch.mul(1 + F.sigmoid(ft2), x)
+        x = torch.mul(1 + torch.sigmoid(ft2), x)
         # the third ring conv
         ft3 = self.conv(x)
         r3 = self.relu(ft3 + self.res_conv(x))
