@@ -23,14 +23,17 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 import pathlib
 
-from utils import get_dataset_root
+from utils import get_dataset_root, find_latest_epoch
 
+DATASET_NAME = 'large_cm_sp'
 DATASETS_DIR = get_dataset_root()
-DIR_TRAIN = os.path.join(DATASETS_DIR, 'COCO', 'large_cm_sp', 'train')
-DIR_TEST = os.path.join(DATASETS_DIR, 'COCO', 'large_cm_sp', 'test')
+DIR_TRAIN = os.path.join(DATASETS_DIR, 'COCO', DATASET_NAME, 'train')
+DIR_TEST = os.path.join(DATASETS_DIR, 'COCO', DATASET_NAME, 'test')
 CURRENT_PATH = str(pathlib.Path().resolve())
 MODEL_NAME = 'resnet50'
-DIR_LOGS = os.path.join(CURRENT_PATH, 'result', 'logs', 'sp_or_cm', MODEL_NAME)
+DIR_LOGS = os.path.join(CURRENT_PATH, 'result', 'logs', 'large_cm_sp', MODEL_NAME)
+if not os.path.exists(DIR_LOGS):
+    os.makedirs(DIR_LOGS)
 
 
 class ForgeDataset(Dataset):
@@ -247,13 +250,15 @@ if __name__ == "__main__":
 
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
-    # for images, labels in train_data_loader:
-    #     fig, ax = plt.subplots(figsize=(10, 10))
-    #     ax.set_xticks([])
-    #     ax.set_yticks([])
-    #     ax.imshow(make_grid(images, 4).permute(1, 2, 0))
-    #     break
+    for images, labels in train_data_loader:
+        fig, ax = plt.subplots(figsize=(10, 10))
+        ax.set_xticks([])
+        ax.set_yticks([])
+        ax.imshow(make_grid(images, 4).permute(1, 2, 0))
+        break
 
+    fine_tune = True
+    start_epoch = 0
     if MODEL_NAME == 'resnet50':
         model = resnet50(pretrained=True)
         # Modifying Head - classifier
@@ -261,6 +266,11 @@ if __name__ == "__main__":
             nn.Linear(2048, 1, bias=True),
             nn.Sigmoid()
         )
+        if fine_tune:
+            fine_tuning_model, latest_epoch = find_latest_epoch(
+                os.path.join(CURRENT_PATH, 'result', 'logs', DATASET_NAME, MODEL_NAME, ))
+            model.load_state_dict(torch.load(fine_tuning_model))
+            start_epoch = latest_epoch
     else:
         raise RuntimeError('model not include')
 
@@ -284,7 +294,7 @@ if __name__ == "__main__":
     epochs = 10
 
     best_val_acc = 0
-    for epoch in range(epochs):
+    for epoch in range(start_epoch, epochs):
         ###Training
         loss, acc, _time = train_one_epoch(train_data_loader)
 
