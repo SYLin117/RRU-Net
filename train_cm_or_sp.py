@@ -13,7 +13,7 @@ from torch.utils.data import Dataset, DataLoader
 import torchvision.transforms as T
 import torchvision.transforms.functional as TF
 from torchvision.utils import make_grid
-from torchvision.models import resnet50
+from torchvision.models import resnet50, vgg16, efficientnet_b2
 
 from sklearn.model_selection import train_test_split
 
@@ -22,7 +22,8 @@ from PIL import Image
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 import pathlib
-
+import wandb
+from self_attention_cv import ViT
 from utils import get_dataset_root, find_latest_epoch
 
 DATASET_NAME = 'large_cm_sp'
@@ -30,7 +31,7 @@ DATASETS_DIR = get_dataset_root()
 DIR_TRAIN = os.path.join(DATASETS_DIR, 'COCO', DATASET_NAME, 'train')
 DIR_TEST = os.path.join(DATASETS_DIR, 'COCO', DATASET_NAME, 'test')
 CURRENT_PATH = str(pathlib.Path().resolve())
-MODEL_NAME = 'resnet50'
+MODEL_NAME = 'EFFICIENTNET_B2'
 DIR_LOGS = os.path.join(CURRENT_PATH, 'result', 'logs', 'large_cm_sp', MODEL_NAME)
 if not os.path.exists(DIR_LOGS):
     os.makedirs(DIR_LOGS)
@@ -147,6 +148,15 @@ if __name__ == "__main__":
             _loss.backward()
             optimizer.step()
 
+            global global_step, experiment, epoch
+            global_step += 1
+            if global_step % 100 == 0:
+                experiment.log({
+                    'train loss': loss,
+                    'step': global_step,
+                    'epoch': epoch
+                })
+
         ###Overall Epoch Results
         end_time = time.time()
         total_time = end_time - start_time
@@ -237,27 +247,27 @@ if __name__ == "__main__":
     val_data_loader = DataLoader(
         dataset=val_dataset,
         num_workers=4,
-        batch_size=16,
+        batch_size=8,
         shuffle=True
     )
 
     test_data_loader = DataLoader(
         dataset=test_dataset,
         num_workers=4,
-        batch_size=16,
+        batch_size=8,
         shuffle=True
     )
 
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
-    for images, labels in train_data_loader:
-        fig, ax = plt.subplots(figsize=(10, 10))
-        ax.set_xticks([])
-        ax.set_yticks([])
-        ax.imshow(make_grid(images, 4).permute(1, 2, 0))
-        break
+    # for images, labels in train_data_loader:
+    #     fig, ax = plt.subplots(figsize=(10, 10))
+    #     ax.set_xticks([])
+    #     ax.set_yticks([])
+    #     ax.imshow(make_grid(images, 4).permute(1, 2, 0))
+    #     break
 
-    fine_tune = True
+    fine_tune = False
     start_epoch = 0
     if MODEL_NAME == 'resnet50':
         model = resnet50(pretrained=True)
@@ -266,13 +276,31 @@ if __name__ == "__main__":
             nn.Linear(2048, 1, bias=True),
             nn.Sigmoid()
         )
-        if fine_tune:
-            fine_tuning_model, latest_epoch = find_latest_epoch(
-                os.path.join(CURRENT_PATH, 'result', 'logs', DATASET_NAME, MODEL_NAME, ))
-            model.load_state_dict(torch.load(fine_tuning_model))
-            start_epoch = latest_epoch
+    elif MODEL_NAME == "ViT16":
+        model = ViT(img_dim=512, patch_dim=16, num_classes=1, classification=True)
+        model.mlp_head = nn.Sequential(
+            nn.Linear(model.dim, 1, bias=True),
+            nn.Sigmoid()
+        )
+    elif MODEL_NAME == "EFFICIENTNET_B2":
+        model = efficientnet_b2(pretrained=True, progress=True)
+        model.classifier = nn.Sequential(
+            nn.Dropout(p=0.3, inplace=True),
+            nn.Linear(in_features=1408, out_features=1, bias=True),
+            nn.Sigmoid(),
+        )
     else:
         raise RuntimeError('model not include')
+    if fine_tune:
+        fine_tuning_model, latest_epoch = find_latest_epoch(
+            os.path.join(CURRENT_PATH, 'result', 'logs', DATASET_NAME, MODEL_NAME, ))
+        model.load_state_dict(torch.load(fine_tuning_model))
+        start_epoch = latest_epoch
+    ## setting up wandb
+    wandb_id = wandb.util.generate_id()
+    experiment = wandb.init(project='Classify-cm-sp', id=wandb_id, resume='allow', anonymous='must')
+    experiment.name = MODEL_NAME
+    print('model name: ', MODEL_NAME)
 
     # Optimizer
     optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
@@ -291,44 +319,54 @@ if __name__ == "__main__":
     model.to(device)
 
     # No of epochs
-    epochs = 10
+    epochs = 50
 
+    global_step = 0
     best_val_acc = 0
     for epoch in range(start_epoch, epochs):
         ###Training
-        loss, acc, _time = train_one_epoch(train_data_loader)
+        train_loss, train_acc, train_time = train_one_epoch(train_data_loader)
 
         # Print Epoch Details
         print("\nTraining")
         print("Epoch {}".format(epoch + 1))
-        print("Loss : {}".format(round(loss, 4)))
-        print("Acc : {}".format(round(acc, 4)))
-        print("Time : {}".format(round(_time, 4)))
+        print("Loss : {}".format(round(train_loss, 4)))
+        print("Acc : {}".format(round(train_acc, 4)))
+        print("Time : {}".format(round(train_time, 4)))
 
         ###Validation
-        loss, acc, _time, best_val_acc = val_one_epoch(val_data_loader, best_val_acc)
+        val_loss, val_acc, val_time, best_val_acc = val_one_epoch(val_data_loader, best_val_acc)
 
         # Print Epoch Details
         print("\nValidating")
         print("Epoch {}".format(epoch + 1))
-        print("Loss : {}".format(round(loss, 4)))
-        print("Acc : {}".format(round(acc, 4)))
-        print("Time : {}".format(round(_time, 4)))
+        print("Loss : {}".format(round(val_loss, 4)))
+        print("Acc : {}".format(round(val_acc, 4)))
+        print("Time : {}".format(round(val_time, 4)))
+
+        experiment.log({
+            'train epoch loss': train_loss,
+            'validation epoch loss': val_loss,
+            'validation epoch acc': val_acc,
+            'epoch': epoch
+        })
 
     ### Plotting Results
 
     # Loss
     plt.title("Loss")
-    plt.plot(np.arange(1, 11, 1), train_logs["loss"], color='blue')
-    plt.plot(np.arange(1, 11, 1), val_logs["loss"], color='yellow')
+    plt.plot(np.arange(start_epoch, epochs + 1, 1), train_logs["loss"], color='blue')
+    plt.plot(np.arange(start_epoch, epochs + 1, 1), val_logs["loss"], color='yellow')
     plt.xlabel("Epochs")
     plt.ylabel("Loss")
     plt.show()
 
     # Accuracy
     plt.title("Accuracy")
-    plt.plot(np.arange(1, 11, 1), train_logs["accuracy"], color='blue')
-    plt.plot(np.arange(1, 11, 1), val_logs["accuracy"], color='yellow')
+    # plt.plot(np.arange(1, 11, 1), train_logs["accuracy"], color='blue')
+    # plt.plot(np.arange(1, 11, 1), val_logs["accuracy"], color='yellow')
+    plt.plot(np.arange(start_epoch, epochs + 1, 1), train_logs["accuracy"], color='blue')
+    plt.plot(np.arange(start_epoch, epochs + 1, 1), val_logs["accuracy"], color='yellow')
     plt.xlabel("Epochs")
     plt.ylabel("Accuracy")
     plt.show()
