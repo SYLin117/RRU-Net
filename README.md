@@ -32,3 +32,6 @@ Please add following information if you cite the paper in your publication:
 ```
 
 Contact yale yalesaleng@gmail.com for any further information.
+
+## Memo
+wandb資料存在/home/ian/.netrc
