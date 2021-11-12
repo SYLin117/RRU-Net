@@ -37,15 +37,20 @@ if not os.path.exists(DIR_LOGS):
     os.makedirs(DIR_LOGS)
 
 
+def pair(t):
+    return t if isinstance(t, tuple) else (t, t)
+
+
 class ForgeDataset(Dataset):
 
-    def __init__(self, imgs, class_to_int, mode="train", transforms=None):
+    def __init__(self, imgs, class_to_int, mode="train", img_size=300, transforms=None):
 
         super().__init__()
         self.imgs = imgs
         self.class_to_int = class_to_int
         self.mode = mode
         self.transforms = transforms
+        self.resize = pair(img_size)
 
     def __getitem__(self, idx):
 
@@ -57,7 +62,7 @@ class ForgeDataset(Dataset):
         # img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB).astype(np.float32)
         # img /= 255.
         img = Image.open(os.path.join(DIR_TRAIN, image_name))
-        img = img.resize((300, 300))
+        img = img.resize(self.resize)
 
         if self.mode == "train" or self.mode == "val":
 
@@ -233,9 +238,9 @@ if __name__ == "__main__":
     int_to_class = {0: "cm", 1: "sp"}
 
     train_imgs, val_imgs = train_test_split(imgs, test_size=0.25)
-    train_dataset = ForgeDataset(train_imgs, class_to_int, mode="train", transforms=get_train_transform())
-    val_dataset = ForgeDataset(val_imgs, class_to_int, mode="val", transforms=get_val_transform())
-    test_dataset = ForgeDataset(test_imgs, class_to_int, mode="test", transforms=get_val_transform())
+    train_dataset = ForgeDataset(train_imgs, class_to_int, mode="train", img_size=300, transforms=get_train_transform())
+    val_dataset = ForgeDataset(val_imgs, class_to_int, mode="val", img_size=300, transforms=get_val_transform())
+    test_dataset = ForgeDataset(test_imgs, class_to_int, mode="test", img_size=300, transforms=get_val_transform())
 
     train_data_loader = DataLoader(
         dataset=train_dataset,

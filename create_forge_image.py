@@ -14,6 +14,9 @@ COCO_DIR = os.path.join(DATASET_ROOT, "COCO")
 sys.path.append(ROOT_DIR)  # To find local version of the library
 
 import os
+
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+
 from random import randint
 from PIL import Image
 import numpy as np
@@ -30,8 +33,8 @@ from utils import bb_intersection_over_union
 image_index = []
 seg_index = []
 
-FORGE_TYPE = 'cm'
-gene_dir_path = os.sep.join([COCO_DIR, 'coco2017_no_overlap_{}'.format(FORGE_TYPE)])
+FORGE_TYPE = 'sp'
+gene_dir_path = os.sep.join([COCO_DIR, 'coco2017_superlarge_{}'.format(FORGE_TYPE)])
 gene_train_image_path = os.sep.join([gene_dir_path, 'train2017'])
 gene_val_image_path = os.sep.join([gene_dir_path, 'val2017'])
 gene_test_image_path = os.sep.join([gene_dir_path, 'test2017'])
@@ -44,7 +47,7 @@ COCO_TEST = 'test'
 COCO_VAL = 'val'
 
 # DATASET_SIZE = int(len(image_index) / 2)
-DATASET_SIZE = 50000
+DATASET_SIZE = 100000
 LOOP_CNT = 10
 OVERLAP_CNT = 20
 
@@ -211,6 +214,7 @@ if __name__ == '__main__':
             min_x, max_x, min_y, max_y = None, None, None, None
             loop_counter = 0
             find_obj = False
+            new_img, mask_img = None, None
             while (loop_counter <= LOOP_CNT):  # try 1000 times to find a object
                 # random choose a random image for segmentation
                 ##################################################################################################
@@ -249,7 +253,7 @@ if __name__ == '__main__':
 
                     # 找到合适obj跳出循环 not too small and not too big
                     if (((max_x - min_x) * (max_y - min_y) >= img.shape[0] * img.shape[1] * 0.01) and
-                            ((max_x - min_x) * (max_y - min_y) <= img.shape[0] * img.shape[1] * 0.3) and
+                            ((max_x - min_x) * (max_y - min_y) <= img.shape[0] * img.shape[1] * 0.4) and
                             (max_x - min_x < img.shape[0]) and
                             (max_y - min_y < img.shape[1])):
                         try:
@@ -284,14 +288,18 @@ if __name__ == '__main__':
                                 continue
                             # 被篡改图像长方形区域*（1-mask)+篡改物体长方形区域*mask
                             img_np[loc_y:loc_y + dy, loc_x:loc_x + dx, :] = \
-                                img_np[loc_y:loc_y + dy, loc_x:loc_x + dx, :] * \
-                                (np.ones_like(mask) - mask) + \
-                                seg_img_np * mask
+                                img_np[loc_y:loc_y + dy, loc_x:loc_x + dx, :] * (np.ones_like(mask) - mask) \
+                                + seg_img_np * mask
                             mask_tmp = np.zeros_like(img_np)
+                            ##新的位置加上mask
                             mask_tmp[loc_y:loc_y + dy, loc_x:loc_x + dx, :] = \
-                                mask_tmp[loc_y:loc_y + dy, loc_x:loc_x + dx, :] * \
-                                (np.ones_like(mask) - mask) + \
+                                mask_tmp[loc_y:loc_y + dy, loc_x:loc_x + dx, :] * (np.ones_like(mask) - mask) + \
                                 seg_img_np * (mask * 255)
+                            ##原始位置也加上mask(copy-move)
+                            if FORGE_TYPE == 'cm':
+                                mask_tmp[min_y:min_y + dy, min_x:min_x + dx, :] = \
+                                    mask_tmp[min_y:min_y + dy, min_x:min_x + dx, :] * (np.ones_like(mask) - mask) + \
+                                    seg_img_np * (mask * 255)
 
                             kernel = np.ones((3, 3), np.uint8)
                             mask_tmp[mask_tmp >= 1] = 255
@@ -320,10 +328,10 @@ if __name__ == '__main__':
             # # 未得到合适大小的obj
             # if loop_counter >= LOOP_CNT:
             #     continue
+            assert new_img != None
+            assert mask_img != None
             count += 1
             pbar.update(1)
-            # if loop_counter < LOOP_CNT:
-            #     count += 1
             split_type = train_val_test()
             img_name = "{}_{}".format(FORGE_TYPE, f'{count:06}')
             json_add_image(json_data=train_json, img_info=img_info, type=split_type, img=new_img, mask=mask_img,
