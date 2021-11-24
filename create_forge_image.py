@@ -33,7 +33,7 @@ from utils import bb_intersection_over_union
 image_index = []
 seg_index = []
 
-FORGE_TYPE = 'sp'
+FORGE_TYPE = 'cm'
 gene_dir_path = os.sep.join([COCO_DIR, 'coco2017_superlarge_{}'.format(FORGE_TYPE)])
 gene_train_image_path = os.sep.join([gene_dir_path, 'train2017'])
 gene_val_image_path = os.sep.join([gene_dir_path, 'val2017'])

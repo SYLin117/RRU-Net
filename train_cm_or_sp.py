@@ -360,8 +360,8 @@ if __name__ == "__main__":
 
     # Loss
     plt.title("Loss")
-    plt.plot(np.arange(start_epoch, epochs + 1, 1), train_logs["loss"], color='blue')
-    plt.plot(np.arange(start_epoch, epochs + 1, 1), val_logs["loss"], color='yellow')
+    plt.plot(np.arange(start_epoch, epochs, 1), train_logs["loss"], color='blue')
+    plt.plot(np.arange(start_epoch, epochs, 1), val_logs["loss"], color='yellow')
     plt.xlabel("Epochs")
     plt.ylabel("Loss")
     plt.show()
@@ -370,8 +370,8 @@ if __name__ == "__main__":
     plt.title("Accuracy")
     # plt.plot(np.arange(1, 11, 1), train_logs["accuracy"], color='blue')
     # plt.plot(np.arange(1, 11, 1), val_logs["accuracy"], color='yellow')
-    plt.plot(np.arange(start_epoch, epochs + 1, 1), train_logs["accuracy"], color='blue')
-    plt.plot(np.arange(start_epoch, epochs + 1, 1), val_logs["accuracy"], color='yellow')
+    plt.plot(np.arange(start_epoch, epochs, 1), train_logs["accuracy"], color='blue')
+    plt.plot(np.arange(start_epoch, epochs, 1), val_logs["accuracy"], color='yellow')
     plt.xlabel("Epochs")
     plt.ylabel("Accuracy")
     plt.show()

@@ -7,7 +7,7 @@ from sklearn.metrics import roc_curve, auc, roc_auc_score
 import time
 import torchvision.transforms as T
 from torchvision.transforms import InterpolationMode
-
+from sklearn.metrics import confusion_matrix
 
 def predict_img(net,
                 full_img,
@@ -127,6 +127,10 @@ if __name__ == "__main__":
         elif os.path.isdir(in_files):  # in_files是資料夾
             auc_list = list()
             time_list = list()
+            tp_list = list()
+            fp_list = list()
+            tn_list = list()
+            fn_list = list()
             input_files = glob(os.path.join(in_files, '*.*'))
             gt_masks = glob(os.path.join(gt_files, '*.*'))
 
@@ -166,8 +170,13 @@ if __name__ == "__main__":
                     y_test = gt_mask.flatten()
                     y_pred = mask.flatten()
                     fpr, tpr, _ = roc_curve(y_test, y_pred)
+                    tn, fp, fn, tp = confusion_matrix(y_test, y_pred, labels=[0, 1]).ravel()
                     roc_auc = auc(fpr, tpr)
                     auc_list.append(roc_auc)
+                    tn_list.append(tn)
+                    fp_list.append(fp)
+                    fn_list.append(fn)
+                    tp_list.append(tp)
                     if not no_save:
                         out_filename = output_files[i]
                         mask_no = mask_regex.match(os.path.split(out_filename)[1]).groups()[0]
@@ -180,6 +189,10 @@ if __name__ == "__main__":
                     print('img:{} predict encounter error:{}'.format(filename, str(re)))
             print("average time:{}".format(sum(time_list) / len(time_list)))
             print("average auc: {}".format(sum(auc_list) / len(auc_list)))
+            print("average tp: {}".format(sum(tp_list) / len(tp_list)))
+            print("average fp: {}".format(sum(fp_list) / len(fp_list)))
+            print("average tn: {}".format(sum(tn_list) / len(tn_list)))
+            print("average fn: {}".format(sum(fn_list) / len(fn_list)))
     # if viz:
     #     print("Visualizing results for image {}, close to continue ...".format(j))
     #     plot_img_and_mask(img, mask)
