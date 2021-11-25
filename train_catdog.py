@@ -11,10 +11,8 @@ import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
 
 import torchvision.transforms as T
-import torchvision.transforms.functional as TF
 from torchvision.utils import make_grid
-from torchvision.models import resnet50, vgg16
-from efficientnet import EfficientNet_b0, EfficientNet_b2, EfficientNet_b5
+from torchvision.models import resnet50
 
 from sklearn.model_selection import train_test_split
 
@@ -22,36 +20,23 @@ from PIL import Image
 
 import matplotlib.pyplot as plt
 from tqdm import tqdm
-import pathlib
-import wandb
-from self_attention_cv import ViT
-from utils import get_dataset_root, find_latest_epoch
 
-DATASET_NAME = 'large_cm_sp'
+from utils import get_dataset_root
+
 DATASETS_DIR = get_dataset_root()
-DIR_TRAIN = os.path.join(DATASETS_DIR, 'COCO', DATASET_NAME, 'train')
-DIR_TEST = os.path.join(DATASETS_DIR, 'COCO', DATASET_NAME, 'test')
-CURRENT_PATH = str(pathlib.Path().resolve())
-MODEL_NAME = 'EFFICIENTNET_B5'
-DIR_LOGS = os.path.join(CURRENT_PATH, 'result', 'logs', 'large_cm_sp', MODEL_NAME)
-if not os.path.exists(DIR_LOGS):
-    os.makedirs(DIR_LOGS)
+DIR_TRAIN = os.path.join(DATASETS_DIR, 'dogs-vs-cats', 'train')
+DIR_TEST = os.path.join(DATASETS_DIR, 'dogs-vs-cats', 'test1')
 
 
-def pair(t):
-    return t if isinstance(t, tuple) else (t, t)
+class CatDogDataset(Dataset):
 
-
-class ForgeDataset(Dataset):
-
-    def __init__(self, imgs, class_to_int, mode="train", img_size=300, transforms=None):
+    def __init__(self, imgs, class_to_int, mode="train", transforms=None):
 
         super().__init__()
         self.imgs = imgs
         self.class_to_int = class_to_int
         self.mode = mode
         self.transforms = transforms
-        self.resize = pair(img_size)
 
     def __getitem__(self, idx):
 
@@ -63,12 +48,12 @@ class ForgeDataset(Dataset):
         # img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB).astype(np.float32)
         # img /= 255.
         img = Image.open(os.path.join(DIR_TRAIN, image_name))
-        img = img.resize(self.resize)
+        img = img.resize((224, 224))
 
         if self.mode == "train" or self.mode == "val":
 
             ### Preparing class label
-            label = self.class_to_int[image_name.split("_")[0]]
+            label = self.class_to_int[image_name.split(".")[0]]
             label = torch.tensor(label, dtype=torch.float32)
 
             ### Apply Transforms on image
@@ -93,7 +78,7 @@ def get_train_transform():
     return T.Compose([
         T.RandomHorizontalFlip(p=0.5),
         T.RandomRotation(15),
-        # T.RandomCrop(204),
+        T.RandomCrop(204),
         T.ToTensor(),
         T.Normalize((0, 0, 0), (1, 1, 1))
     ])
@@ -154,15 +139,6 @@ if __name__ == "__main__":
             _loss.backward()
             optimizer.step()
 
-            global global_step, experiment, epoch
-            global_step += 1
-            if global_step % 100 == 0:
-                experiment.log({
-                    'train loss': loss,
-                    'step': global_step,
-                    'epoch': epoch
-                })
-
         ###Overall Epoch Results
         end_time = time.time()
         total_time = end_time - start_time
@@ -220,8 +196,7 @@ if __name__ == "__main__":
         ###Saving best model
         if epoch_acc > best_val_acc:
             best_val_acc = epoch_acc
-            # torch.save(model.state_dict(), "resnet50_best.pth")
-            torch.save(model.state_dict(), os.path.join(DIR_LOGS, 'checkpoint_epoch{}.pth'.format(epoch + 1)))
+            torch.save(model.state_dict(), "resnet50_best.pth")
 
         return epoch_loss, epoch_acc, total_time, best_val_acc
 
@@ -229,97 +204,56 @@ if __name__ == "__main__":
     imgs = os.listdir(DIR_TRAIN)
     test_imgs = os.listdir(DIR_TEST)
 
-    cm_list = [img for img in imgs if img.split("_")[0] == "cm"]
-    sp_list = [img for img in imgs if img.split("_")[0] == "sp"]
+    dogs_list = [img for img in imgs if img.split(".")[0] == "dog"]
+    cats_list = [img for img in imgs if img.split(".")[0] == "cat"]
 
-    print("No of CM Images: ", len(cm_list))
-    print("No of SP Images: ", len(sp_list))
+    print("No of Dogs Images: ", len(dogs_list))
+    print("No of Cats Images: ", len(cats_list))
 
-    class_to_int = {"cm": 0, "sp": 1}
-    int_to_class = {0: "cm", 1: "sp"}
+    class_to_int = {"dog": 0, "cat": 1}
+    int_to_class = {0: "dog", 1: "cat"}
 
     train_imgs, val_imgs = train_test_split(imgs, test_size=0.25)
-    train_dataset = ForgeDataset(train_imgs, class_to_int, mode="train", img_size=300, transforms=get_train_transform())
-    val_dataset = ForgeDataset(val_imgs, class_to_int, mode="val", img_size=300, transforms=get_val_transform())
-    test_dataset = ForgeDataset(test_imgs, class_to_int, mode="test", img_size=300, transforms=get_val_transform())
+    train_dataset = CatDogDataset(train_imgs, class_to_int, mode="train", transforms=get_train_transform())
+    val_dataset = CatDogDataset(val_imgs, class_to_int, mode="val", transforms=get_val_transform())
+    test_dataset = CatDogDataset(test_imgs, class_to_int, mode="test", transforms=get_val_transform())
 
     train_data_loader = DataLoader(
         dataset=train_dataset,
         num_workers=4,
-        batch_size=4,
+        batch_size=16,
         shuffle=True
     )
 
     val_data_loader = DataLoader(
         dataset=val_dataset,
         num_workers=4,
-        batch_size=8,
+        batch_size=16,
         shuffle=True
     )
 
     test_data_loader = DataLoader(
         dataset=test_dataset,
         num_workers=4,
-        batch_size=4,
+        batch_size=16,
         shuffle=True
     )
 
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
-    # for images, labels in train_data_loader:
-    #     fig, ax = plt.subplots(figsize=(10, 10))
-    #     ax.set_xticks([])
-    #     ax.set_yticks([])
-    #     ax.imshow(make_grid(images, 4).permute(1, 2, 0))
-    #     break
+    for images, labels in train_data_loader:
+        fig, ax = plt.subplots(figsize=(10, 10))
+        ax.set_xticks([])
+        ax.set_yticks([])
+        ax.imshow(make_grid(images, 4).permute(1, 2, 0))
+        break
 
-    fine_tune = False
-    start_epoch = 0
-    if MODEL_NAME == 'resnet50':
-        model = resnet50(pretrained=True)
-        # Modifying Head - classifier
-        model.fc = nn.Sequential(
-            nn.Linear(2048, 1, bias=True),
-            nn.Sigmoid()
-        )
-    elif MODEL_NAME == "VGG16":
-        model = vgg16(pretrained=True)
-        # Modifying Head - classifier
-        model.classifier = nn.Sequential(
-            nn.Linear(in_features=25088, out_features=4096, bias=True),
-            nn.ReLU(inplace=True),
-            nn.Dropout(p=0.5, inplace=False),
-            nn.Linear(in_features=4096, out_features=1000),
-            nn.ReLU(inplace=True),
-            nn.Dropout(p=0.5, inplace=False),
-            nn.Linear(in_features=1000, out_features=1, bias=True),
-            nn.Sigmoid()
-        )
-    elif MODEL_NAME == "ViT16":
-        model = ViT(img_dim=512, patch_dim=16, num_classes=1, classification=True)
-        model.mlp_head = nn.Sequential(
-            nn.Linear(model.dim, 1, bias=True),
-            nn.Sigmoid()
-        )
-    elif MODEL_NAME == "EFFICIENTNET_B0":
-        model = EfficientNet_b0(num_classes=1)
-    elif MODEL_NAME == "EFFICIENTNET_B2":
-        model = EfficientNet_b2(num_classes=1)
-    elif MODEL_NAME == "EFFICIENTNET_B5":
-        model = EfficientNet_b5(num_classes=1)
-    else:
-        raise RuntimeError('model not include')
-    if fine_tune:
-        fine_tuning_model, latest_epoch = find_latest_epoch(
-            os.path.join(CURRENT_PATH, 'result', 'logs', DATASET_NAME, MODEL_NAME, ))
-        model.load_state_dict(torch.load(fine_tuning_model))
-        start_epoch = latest_epoch
-    ## setting up wandb
-    wandb_id = wandb.util.generate_id()
-    experiment = wandb.init(project='Classify-cm-sp', id=wandb_id, resume='allow', anonymous='must')
-    experiment.name = MODEL_NAME
-    print('model name: ', MODEL_NAME)
-
+    model = resnet50(pretrained=True)
+    # Modifying Head - classifier
+    model.fc = nn.Sequential(
+        nn.Linear(2048, 1, bias=True),
+        nn.Sigmoid()
+    )
     # Optimizer
     optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
 
@@ -337,54 +271,44 @@ if __name__ == "__main__":
     model.to(device)
 
     # No of epochs
-    epochs = 50
+    epochs = 10
 
-    global_step = 0
     best_val_acc = 0
-    for epoch in range(start_epoch, epochs):
+    for epoch in range(epochs):
         ###Training
-        train_loss, train_acc, train_time = train_one_epoch(train_data_loader)
+        loss, acc, _time = train_one_epoch(train_data_loader)
 
         # Print Epoch Details
         print("\nTraining")
         print("Epoch {}".format(epoch + 1))
-        print("Loss : {}".format(round(train_loss, 4)))
-        print("Acc : {}".format(round(train_acc, 4)))
-        print("Time : {}".format(round(train_time, 4)))
+        print("Loss : {}".format(round(loss, 4)))
+        print("Acc : {}".format(round(acc, 4)))
+        print("Time : {}".format(round(_time, 4)))
 
         ###Validation
-        val_loss, val_acc, val_time, best_val_acc = val_one_epoch(val_data_loader, best_val_acc)
+        loss, acc, _time, best_val_acc = val_one_epoch(val_data_loader, best_val_acc)
 
         # Print Epoch Details
         print("\nValidating")
         print("Epoch {}".format(epoch + 1))
-        print("Loss : {}".format(round(val_loss, 4)))
-        print("Acc : {}".format(round(val_acc, 4)))
-        print("Time : {}".format(round(val_time, 4)))
-
-        experiment.log({
-            'train epoch loss': train_loss,
-            'validation epoch loss': val_loss,
-            'validation epoch acc': val_acc,
-            'epoch': epoch
-        })
+        print("Loss : {}".format(round(loss, 4)))
+        print("Acc : {}".format(round(acc, 4)))
+        print("Time : {}".format(round(_time, 4)))
 
     ### Plotting Results
 
     # Loss
     plt.title("Loss")
-    plt.plot(np.arange(start_epoch, epochs, 1), train_logs["loss"], color='blue')
-    plt.plot(np.arange(start_epoch, epochs, 1), val_logs["loss"], color='yellow')
+    plt.plot(np.arange(1, 11, 1), train_logs["loss"], color='blue')
+    plt.plot(np.arange(1, 11, 1), val_logs["loss"], color='yellow')
     plt.xlabel("Epochs")
     plt.ylabel("Loss")
     plt.show()
 
     # Accuracy
     plt.title("Accuracy")
-    # plt.plot(np.arange(1, 11, 1), train_logs["accuracy"], color='blue')
-    # plt.plot(np.arange(1, 11, 1), val_logs["accuracy"], color='yellow')
-    plt.plot(np.arange(start_epoch, epochs, 1), train_logs["accuracy"], color='blue')
-    plt.plot(np.arange(start_epoch, epochs, 1), val_logs["accuracy"], color='yellow')
+    plt.plot(np.arange(1, 11, 1), train_logs["accuracy"], color='blue')
+    plt.plot(np.arange(1, 11, 1), val_logs["accuracy"], color='yellow')
     plt.xlabel("Epochs")
     plt.ylabel("Accuracy")
     plt.show()

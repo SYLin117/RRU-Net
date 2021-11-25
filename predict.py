@@ -9,6 +9,7 @@ import torchvision.transforms as T
 from torchvision.transforms import InterpolationMode
 from sklearn.metrics import confusion_matrix
 
+
 def predict_img(net,
                 full_img,
                 resize=(300, 300),
@@ -131,6 +132,7 @@ if __name__ == "__main__":
             fp_list = list()
             tn_list = list()
             fn_list = list()
+            pixel_list = list()
             threshold_list = list()
             input_files = glob(os.path.join(in_files, '*.*'))
             gt_masks = glob(os.path.join(gt_files, '*.*'))
@@ -157,7 +159,7 @@ if __name__ == "__main__":
                 # img = cv2.cvtColor(cv2.imread(filename, cv2.IMREAD_COLOR), cv2.COLOR_BGR2RGB)
                 img = Image.open(filename).convert('RGB')  # cause some image got 4 channel(RGBA), eg:001221 file
                 width, height = img.size
-
+                pixel_list.append(width * height)
                 try:
                     start_time = time.time()
                     mask = predict_img(net=net,
@@ -197,6 +199,7 @@ if __name__ == "__main__":
             print("average fp: {}".format(sum(fp_list) / len(fp_list)))
             print("average tn: {}".format(sum(tn_list) / len(tn_list)))
             print("average fn: {}".format(sum(fn_list) / len(fn_list)))
+            print("average pixel: {}".format(sum(pixel_list) / len(pixel_list)))
     # if viz:
     #     print("Visualizing results for image {}, close to continue ...".format(j))
     #     plot_img_and_mask(img, mask)
