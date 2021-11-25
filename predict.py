@@ -81,12 +81,12 @@ if __name__ == "__main__":
     resize = (300, 300)
     ###############################################PREDICT FILES(FOLDER)################################################
     # in_files = os.path.join(current_path, 'data', 'video_test', 'images')
-    # in_files = os.path.join(DATASETS_DIR, 'total_forge', 'train_and_test', 'test', 'images')  # total
-    # gt_files = os.path.join(DATASETS_DIR, 'total_forge', 'train_and_test', 'test', 'masks')  # total
+    in_files = os.path.join(DATASETS_DIR, 'total_forge', 'train_and_test', 'test', 'images')  # total
+    gt_files = os.path.join(DATASETS_DIR, 'total_forge', 'train_and_test', 'test', 'masks')  # total
     # in_files = os.path.join(DATASETS_DIR, 'total_forge', 'CM', 'test_and_train', 'test', 'images')  # copy-move
     # gt_files = os.path.join(DATASETS_DIR, 'total_forge', 'CM', 'test_and_train', 'test', 'masks')  # copy-move
-    in_files = os.path.join(DATASETS_DIR, 'total_forge', 'SP', 'test_and_train', 'test', 'images')  # splicing
-    gt_files = os.path.join(DATASETS_DIR, 'total_forge', 'SP', 'test_and_train', 'test', 'masks')  # splicing
+    # in_files = os.path.join(DATASETS_DIR, 'total_forge', 'SP', 'test_and_train', 'test', 'images')  # splicing
+    # gt_files = os.path.join(DATASETS_DIR, 'total_forge', 'SP', 'test_and_train', 'test', 'masks')  # splicing
     ##########################################COPY-MOVE MODEL###########################################################
     model = os.path.join(current_path, 'result', 'logs', 'Total', network, 'checkpoint_epoch50.pth')
     # model = os.path.join(current_path, 'result', 'logs', 'large_cm', network, 'checkpoint_epoch47.pth')
@@ -131,6 +131,7 @@ if __name__ == "__main__":
             fp_list = list()
             tn_list = list()
             fn_list = list()
+            threshold_list = list()
             input_files = glob(os.path.join(in_files, '*.*'))
             gt_masks = glob(os.path.join(gt_files, '*.*'))
 
@@ -149,9 +150,9 @@ if __name__ == "__main__":
                 gt_mask = cv2.imread(gt_filename, cv2.IMREAD_GRAYSCALE)
                 (_, gt_mask) = cv2.threshold(gt_mask, 125, 1, cv2.THRESH_BINARY)
                 # gt_mask = np.where(gt_mask >= 1, 1, 0)
-                cv2.imshow('mask:'.format(gt_no), gt_mask)
-                cv2.waitKey(0)
-                cv2.destroyAllWindows()
+                # cv2.imshow('mask:'.format(gt_no), gt_mask)
+                # cv2.waitKey(0)
+                # cv2.destroyAllWindows()
                 # print(f'\nPredicting image {filename} ...')
                 # img = cv2.cvtColor(cv2.imread(filename, cv2.IMREAD_COLOR), cv2.COLOR_BGR2RGB)
                 img = Image.open(filename).convert('RGB')  # cause some image got 4 channel(RGBA), eg:001221 file
@@ -165,12 +166,15 @@ if __name__ == "__main__":
                                        use_gpu=not cpu)
                     # print("predict time:{}".format(time.time() - start_time))
                     time_list.append(time.time() - start_time)
-                    save_mask = mask > mask_threshold
+                    # save_mask = mask > mask_threshold
                     mask = cv2.resize(mask, (gt_mask.shape[1], gt_mask.shape[0]), cv2.INTER_CUBIC)
                     y_test = gt_mask.flatten()
                     y_pred = mask.flatten()
-                    fpr, tpr, _ = roc_curve(y_test, y_pred)
-                    tn, fp, fn, tp = confusion_matrix(y_test, y_pred, labels=[0, 1]).ravel()
+                    fpr, tpr, thresholds = roc_curve(y_test, y_pred)
+                    fpr_tpr_diff = fpr - tpr
+                    best_thres_idx = np.argmax(fpr_tpr_diff, axis=0)
+                    save_mask = mask > thresholds[best_thres_idx]
+                    tn, fp, fn, tp = confusion_matrix(y_test, save_mask.flatten(), labels=[0, 1]).ravel()
                     roc_auc = auc(fpr, tpr)
                     auc_list.append(roc_auc)
                     tn_list.append(tn)
