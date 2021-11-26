@@ -14,7 +14,7 @@ import torchvision.transforms as T
 import torchvision.transforms.functional as TF
 from torchvision.utils import make_grid
 from torchvision.models import resnet50, vgg16
-from efficientnet import EfficientNet_b0, EfficientNet_b2, EfficientNet_b5
+from efficientnet import EfficientNet_b0,EfficientNet_b1, EfficientNet_b2, EfficientNet_b5
 
 from sklearn.model_selection import train_test_split
 
@@ -29,10 +29,10 @@ from utils import get_dataset_root, find_latest_epoch
 
 DATASET_NAME = 'large_cm_sp'
 DATASETS_DIR = get_dataset_root()
-DIR_TRAIN = os.path.join(DATASETS_DIR, 'COCO', DATASET_NAME, 'train2')
+DIR_TRAIN = os.path.join(DATASETS_DIR, 'COCO', DATASET_NAME, 'train')
 DIR_TEST = os.path.join(DATASETS_DIR, 'COCO', DATASET_NAME, 'test')
 CURRENT_PATH = str(pathlib.Path().resolve())
-MODEL_NAME = 'EFFICIENTNET_B5'
+MODEL_NAME = 'EFFICIENTNET_B1'
 DIR_LOGS = os.path.join(CURRENT_PATH, 'result', 'logs', 'large_cm_sp', MODEL_NAME)
 if not os.path.exists(DIR_LOGS):
     os.makedirs(DIR_LOGS)
@@ -248,24 +248,24 @@ if __name__ == "__main__":
 
     train_data_loader = DataLoader(
         dataset=train_dataset,
-        num_workers=2,
-        batch_size=2,
+        num_workers=4,
+        batch_size=8,
         drop_last=True,
         shuffle=True
     )
 
     val_data_loader = DataLoader(
         dataset=val_dataset,
-        num_workers=2,
-        batch_size=2,
+        num_workers=4,
+        batch_size=8,
         drop_last=True,
         shuffle=True
     )
 
     test_data_loader = DataLoader(
         dataset=test_dataset,
-        num_workers=2,
-        batch_size=2,
+        num_workers=4,
+        batch_size=8,
         drop_last=True,
         shuffle=True
     )
@@ -309,6 +309,8 @@ if __name__ == "__main__":
         )
     elif MODEL_NAME == "EFFICIENTNET_B0":
         model = EfficientNet_b0(num_classes=1)
+    elif MODEL_NAME == "EFFICIENTNET_B1":
+        model = EfficientNet_b1(num_classes=1)
     elif MODEL_NAME == "EFFICIENTNET_B2":
         model = EfficientNet_b2(num_classes=1)
     elif MODEL_NAME == "EFFICIENTNET_B5":
