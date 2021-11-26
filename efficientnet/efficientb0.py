@@ -61,7 +61,6 @@ class EfficientNet_b5(nn.Module):
             nn.Linear(512, 256),
             nn.Linear(256, num_classes, bias=True),
             nn.Sigmoid()
-
         )
 
     def forward(self, inputs):

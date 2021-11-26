@@ -29,7 +29,7 @@ from utils import get_dataset_root, find_latest_epoch
 
 DATASET_NAME = 'large_cm_sp'
 DATASETS_DIR = get_dataset_root()
-DIR_TRAIN = os.path.join(DATASETS_DIR, 'COCO', DATASET_NAME, 'train')
+DIR_TRAIN = os.path.join(DATASETS_DIR, 'COCO', DATASET_NAME, 'train2')
 DIR_TEST = os.path.join(DATASETS_DIR, 'COCO', DATASET_NAME, 'test')
 CURRENT_PATH = str(pathlib.Path().resolve())
 MODEL_NAME = 'EFFICIENTNET_B5'
@@ -139,7 +139,10 @@ if __name__ == "__main__":
             optimizer.zero_grad()
 
             # Forward
-            preds = model(images)
+            try:
+                preds = model(images)
+            except ValueError as ve:
+                print(str(ve))
 
             # Calculating Loss
             _loss = criterion(preds, labels)
@@ -239,28 +242,31 @@ if __name__ == "__main__":
     int_to_class = {0: "cm", 1: "sp"}
 
     train_imgs, val_imgs = train_test_split(imgs, test_size=0.25)
-    train_dataset = ForgeDataset(train_imgs, class_to_int, mode="train", img_size=300, transforms=get_train_transform())
-    val_dataset = ForgeDataset(val_imgs, class_to_int, mode="val", img_size=300, transforms=get_val_transform())
-    test_dataset = ForgeDataset(test_imgs, class_to_int, mode="test", img_size=300, transforms=get_val_transform())
+    train_dataset = ForgeDataset(train_imgs, class_to_int, mode="train", img_size=500, transforms=get_train_transform())
+    val_dataset = ForgeDataset(val_imgs, class_to_int, mode="val", img_size=500, transforms=get_val_transform())
+    test_dataset = ForgeDataset(test_imgs, class_to_int, mode="test", img_size=500, transforms=get_val_transform())
 
     train_data_loader = DataLoader(
         dataset=train_dataset,
-        num_workers=4,
-        batch_size=4,
+        num_workers=2,
+        batch_size=2,
+        drop_last=True,
         shuffle=True
     )
 
     val_data_loader = DataLoader(
         dataset=val_dataset,
-        num_workers=4,
-        batch_size=8,
+        num_workers=2,
+        batch_size=2,
+        drop_last=True,
         shuffle=True
     )
 
     test_data_loader = DataLoader(
         dataset=test_dataset,
-        num_workers=4,
-        batch_size=4,
+        num_workers=2,
+        batch_size=2,
+        drop_last=True,
         shuffle=True
     )
 

@@ -50,6 +50,6 @@ if __name__ == '__main__':
     # print(net)
 
     net = EfficientNet_b5(num_classes=1)
-    x = torch.rand(4, 3, 300, 300)
-    y = net(x)
-    # summary(net, input_size=(1, 3, 300, 300), col_names=("input_size", "output_size"))
+    # x = torch.rand(4, 3, 300, 300)
+    # y = net(x)
+    summary(net, input_size=(1, 3, 300, 300), col_names=("input_size", "output_size"))
