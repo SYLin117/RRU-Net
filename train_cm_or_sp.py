@@ -242,9 +242,9 @@ if __name__ == "__main__":
     int_to_class = {0: "cm", 1: "sp"}
 
     train_imgs, val_imgs = train_test_split(imgs, test_size=0.25)
-    train_dataset = ForgeDataset(train_imgs, class_to_int, mode="train", img_size=500, transforms=get_train_transform())
-    val_dataset = ForgeDataset(val_imgs, class_to_int, mode="val", img_size=500, transforms=get_val_transform())
-    test_dataset = ForgeDataset(test_imgs, class_to_int, mode="test", img_size=500, transforms=get_val_transform())
+    train_dataset = ForgeDataset(train_imgs, class_to_int, mode="train", img_size=300, transforms=get_train_transform())
+    val_dataset = ForgeDataset(val_imgs, class_to_int, mode="val", img_size=300, transforms=get_val_transform())
+    test_dataset = ForgeDataset(test_imgs, class_to_int, mode="test", img_size=300, transforms=get_val_transform())
 
     train_data_loader = DataLoader(
         dataset=train_dataset,
@@ -257,7 +257,7 @@ if __name__ == "__main__":
     val_data_loader = DataLoader(
         dataset=val_dataset,
         num_workers=4,
-        batch_size=8,
+        batch_size=4,
         drop_last=True,
         shuffle=True
     )
@@ -265,7 +265,7 @@ if __name__ == "__main__":
     test_data_loader = DataLoader(
         dataset=test_dataset,
         num_workers=4,
-        batch_size=8,
+        batch_size=4,
         drop_last=True,
         shuffle=True
     )
