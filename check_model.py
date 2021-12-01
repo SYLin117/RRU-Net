@@ -16,7 +16,9 @@ from torchinfo import summary
 from self_attention_cv import TransUnet, ResNet50ViT, ViT
 from torchvision.models import vgg16
 from efficientnet_pytorch import EfficientNet
-from efficientnet import EfficientNet_b0, EfficientNet_b1, EfficientNet_b2, EfficientNet_b3, EfficientNet_b4, EfficientNet_b5
+from efficientnet import EfficientNet_b0, EfficientNet_b1, EfficientNet_b2, EfficientNet_b3, EfficientNet_b4, \
+    EfficientNet_b5
+from u2net_model import U2NET, U2NETP
 
 if __name__ == '__main__':
     print("===main===")
@@ -44,12 +46,14 @@ if __name__ == '__main__':
     # net = model = vgg16(pretrained=True)
     # print(net)
 
-    net = EfficientNet_b4(num_classes=1)
-    # print(net.extract_features())
-    summary(net, input_size=(1, 3, 300, 300), col_names=("input_size", "output_size"))
+    # net = EfficientNet_b4(num_classes=1)
+    # summary(net, input_size=(1, 3, 300, 300), col_names=("input_size", "output_size"))
     # print(net)
 
     # net = EfficientNet_b5(num_classes=1)
     # x = torch.rand(4, 3, 300, 300)
     # y = net(x)
     # summary(net, input_size=(1, 3, 300, 300), col_names=("input_size", "output_size"))
+
+    net = U2NET(3, 1)
+    summary(net, input_size=(1, 3, 300, 300), col_names=("input_size", "output_size"))
