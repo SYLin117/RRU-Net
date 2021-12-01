@@ -13,8 +13,8 @@ from torch.utils.data import Dataset, DataLoader
 import torchvision.transforms as T
 import torchvision.transforms.functional as TF
 from torchvision.utils import make_grid
-from torchvision.models import resnet50, vgg16
-from efficientnet import EfficientNet_b0,EfficientNet_b1, EfficientNet_b2, EfficientNet_b5
+from torchvision.models import resnet50,resnet18, vgg16
+from efficientnet import EfficientNet_b0, EfficientNet_b1, EfficientNet_b2, EfficientNet_b5
 
 from sklearn.model_selection import train_test_split
 
@@ -32,7 +32,7 @@ DATASETS_DIR = get_dataset_root()
 DIR_TRAIN = os.path.join(DATASETS_DIR, 'COCO', DATASET_NAME, 'train')
 DIR_TEST = os.path.join(DATASETS_DIR, 'COCO', DATASET_NAME, 'test')
 CURRENT_PATH = str(pathlib.Path().resolve())
-MODEL_NAME = 'EFFICIENTNET_B1'
+MODEL_NAME = 'RESNET18'
 DIR_LOGS = os.path.join(CURRENT_PATH, 'result', 'logs', 'large_cm_sp', MODEL_NAME)
 if not os.path.exists(DIR_LOGS):
     os.makedirs(DIR_LOGS)
@@ -281,11 +281,33 @@ if __name__ == "__main__":
 
     fine_tune = False
     start_epoch = 0
-    if MODEL_NAME == 'resnet50':
+    if MODEL_NAME == 'RESNET50':
         model = resnet50(pretrained=True)
         # Modifying Head - classifier
         model.fc = nn.Sequential(
-            nn.Linear(2048, 1, bias=True),
+            nn.Linear(2048, 1024, bias=True),
+            nn.BatchNorm1d(1024),
+            nn.Dropout(p=0.2),
+            nn.Linear(1024, 512, bias=True),
+            nn.BatchNorm1d(512),
+            nn.Dropout(p=0.2),
+            nn.Linear(512, 256, bias=True),
+            nn.BatchNorm1d(256),
+            nn.Dropout(p=0.2),
+            nn.Linear(256, 1, bias=True),
+            nn.Sigmoid()
+        )
+    if MODEL_NAME == 'RESNET18':
+        model = resnet18(pretrained=True)
+        # Modifying Head - classifier
+        model.fc = nn.Sequential(
+            nn.Linear(512, 256, bias=True),
+            nn.BatchNorm1d(256),
+            nn.Dropout(p=0.2),
+            nn.Linear(256, 128, bias=True),
+            nn.BatchNorm1d(128),
+            nn.Dropout(p=0.2),
+            nn.Linear(128, 1, bias=True),
             nn.Sigmoid()
         )
     elif MODEL_NAME == "VGG16":
@@ -293,12 +315,15 @@ if __name__ == "__main__":
         # Modifying Head - classifier
         model.classifier = nn.Sequential(
             nn.Linear(in_features=25088, out_features=4096, bias=True),
-            nn.ReLU(inplace=True),
-            nn.Dropout(p=0.5, inplace=False),
-            nn.Linear(in_features=4096, out_features=1000),
-            nn.ReLU(inplace=True),
-            nn.Dropout(p=0.5, inplace=False),
-            nn.Linear(in_features=1000, out_features=1, bias=True),
+            nn.BatchNorm1d(4096),
+            nn.Dropout(p=0.2),
+            nn.Linear(in_features=4096, out_features=1000, bias=True),
+            nn.BatchNorm1d(1000),
+            nn.Dropout(p=0.2),
+            nn.Linear(in_features=1000, out_features=500, bias=True),
+            nn.BatchNorm1d(500),
+            nn.Dropout(p=0.2),
+            nn.Linear(in_features=500, out_features=1, bias=True),
             nn.Sigmoid()
         )
     elif MODEL_NAME == "ViT16":
@@ -309,8 +334,6 @@ if __name__ == "__main__":
         )
     elif MODEL_NAME == "EFFICIENTNET_B0":
         model = EfficientNet_b0(num_classes=1)
-    elif MODEL_NAME == "EFFICIENTNET_B1":
-        model = EfficientNet_b1(num_classes=1)
     elif MODEL_NAME == "EFFICIENTNET_B2":
         model = EfficientNet_b2(num_classes=1)
     elif MODEL_NAME == "EFFICIENTNET_B5":

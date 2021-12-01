@@ -16,6 +16,21 @@ from transunet import MyTransUNet
 import re
 from tqdm import tqdm
 
+from u2net_model import U2NET, U2NETP
+import math
+
+
+def init_weights(m):
+    if isinstance(m, nn.Conv2d):
+        n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+        m.weight.data.normal_(0, math.sqrt(2. / n))
+    elif isinstance(m, nn.BatchNorm2d):
+        m.weight.data.fill_(1)
+        m.bias.data.zero_()
+    elif type(m) == nn.Linear:
+        torch.nn.init.xavier_uniform_(m.weight)
+        m.bias.data.fill_(0.01)
+
 
 def train_net(net,
               epochs=5,
@@ -28,10 +43,11 @@ def train_net(net,
               train_dataset=None,
               val_dataset=None,
               dir_logs=None,
-              model_name='no-model_name',
+              model_name='no-model-name',
               resume=False,
               resume_id=None,
-              latest_epoch=0, ):
+              latest_epoch=0,
+              project_name=None):
     # training images are square
     # ids = split_ids(get_ids(dir_img))
     # iddataset = split_train_val(ids, val_percent)
@@ -51,7 +67,7 @@ def train_net(net,
     val_loader = DataLoader(val_set, shuffle=False, drop_last=True, **val_args)
 
     id = wandb.util.generate_id() if not resume else resume_id
-    experiment = wandb.init(project='Copy-Move-COCO', id=id, resume='allow', anonymous='must')
+    experiment = wandb.init(project=project_name.replace("_", "-"), id=id, resume='allow', anonymous='must')
     experiment.name = model_name
     if not resume:
         experiment.config.update(dict(epochs=epochs, batch_size=batch_size, learning_rate=lr,
@@ -80,6 +96,7 @@ def train_net(net,
     # optimizer = optim.Adam(net.parameters(),
     #                        lr=lr,
     #                        weight_decay=0)
+    net.apply(init_weights)
     optimizer = optim.RMSprop(net.parameters(), lr=lr, weight_decay=1e-8, momentum=0.9)
     # scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'max', patience=2)  # goal: maximize Dice score
     # grad_scaler = torch.cuda.amp.GradScaler(enabled=False)
@@ -192,11 +209,11 @@ if __name__ == '__main__':
     """
     import pathlib
 
-    epochs, batchsize, scale, gpu = 50, 4, 1, True
+    epochs, batchsize, scale, gpu = 50, 2, 1, True
     lr = 1e-5
     ft = False
-    dataset_name = 'Total'
-    model = 'Unet'
+    dataset_name = 'superlarge_sp'
+    model = 'U2Net'
     CURRENT_PATH = str(pathlib.Path().resolve())
     resize = (300, 300)
 
@@ -209,6 +226,10 @@ if __name__ == '__main__':
         net = Res_Unet(n_channels=3, n_classes=1)
     elif model == 'Ringed_Res_Unet':
         net = Ringed_Res_Unet(n_channels=3, n_classes=1)
+    elif model == 'U2Net':
+        net = U2NET(in_ch=3, out_ch=1)
+    elif model == 'U2NetP':
+        net = U2NETP(in_ch=3, out_ch=1)
     elif model == 'MyTransUnet':
         net = MyTransUNet(in_channels=3, classes=1, img_dim=resize[0])
     elif model == 'MyTransUnet2':
@@ -231,12 +252,22 @@ if __name__ == '__main__':
         cudnn.benchmark = True  # faster convolutions, but more memory
 
     DATASETS_DIR = get_dataset_root()
-    dir_img = DATASETS_DIR.joinpath('COCO', 'coco2017_no_overlap_cm', 'A', 'train')
-    dir_mask = DATASETS_DIR.joinpath('COCO', 'coco2017_no_overlap_cm', 'B', 'train')
-    train_dataset = ForgeDataset(dir_img, dir_mask, 1, mask_suffix='', resize=resize)
-    dir_img_val = DATASETS_DIR.joinpath('COCO', 'coco2017_no_overlap_cm', 'A', 'val')
-    dir_mask_val = DATASETS_DIR.joinpath('COCO', 'coco2017_no_overlap_cm', 'B', 'val')
-    val_dataset = ForgeDataset(dir_img_val, dir_mask_val, 1, mask_suffix='', resize=resize)
+    if dataset_name == 'superlarge_cm':
+        dir_img = DATASETS_DIR.joinpath('COCO', 'coco2017_superlarge_cm', 'A', 'train')
+        dir_mask = DATASETS_DIR.joinpath('COCO', 'coco2017_superlarge_cm', 'B', 'train')
+        train_dataset = ForgeDataset(dir_img, dir_mask, 1, mask_suffix='', resize=resize)
+        dir_img_val = DATASETS_DIR.joinpath('COCO', 'coco2017_superlarge_cm', 'A', 'val')
+        dir_mask_val = DATASETS_DIR.joinpath('COCO', 'coco2017_superlarge_cm', 'B', 'val')
+        val_dataset = ForgeDataset(dir_img_val, dir_mask_val, 1, mask_suffix='', resize=resize)
+    elif dataset_name == 'superlarge_sp':
+        dir_img = DATASETS_DIR.joinpath('COCO', 'coco2017_superlarge_sp', 'A', 'train')
+        dir_mask = DATASETS_DIR.joinpath('COCO', 'coco2017_superlarge_sp', 'B', 'train')
+        train_dataset = ForgeDataset(dir_img, dir_mask, 1, mask_suffix='', resize=resize)
+        dir_img_val = DATASETS_DIR.joinpath('COCO', 'coco2017_superlarge_sp', 'A', 'val')
+        dir_mask_val = DATASETS_DIR.joinpath('COCO', 'coco2017_superlarge_sp', 'B', 'val')
+        val_dataset = ForgeDataset(dir_img_val, dir_mask_val, 1, mask_suffix='', resize=resize)
+    else:
+        raise Exception("dataset not include")
     train_net(net=net,
               epochs=epochs,
               batch_size=batchsize,
@@ -251,4 +282,5 @@ if __name__ == '__main__':
               model_name=model,
               resume=False,
               resume_id=id,
-              latest_epoch=latest_epoch, )
+              latest_epoch=latest_epoch,
+              project_name=dataset_name)

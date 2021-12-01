@@ -14,7 +14,7 @@ import time
 import wandb
 from torchinfo import summary
 from self_attention_cv import TransUnet, ResNet50ViT, ViT
-from torchvision.models import vgg16
+from torchvision.models import vgg16, resnet18, resnet50
 from efficientnet_pytorch import EfficientNet
 from efficientnet import EfficientNet_b0, EfficientNet_b1, EfficientNet_b2, EfficientNet_b3, EfficientNet_b4, \
     EfficientNet_b5
@@ -55,5 +55,12 @@ if __name__ == '__main__':
     # y = net(x)
     # summary(net, input_size=(1, 3, 300, 300), col_names=("input_size", "output_size"))
 
-    net = U2NET(3, 1)
+    # net = resnet18(pretrained=True)
+    # print(net)
+    # summary(net, input_size=(1, 3, 300, 300), col_names=("input_size", "output_size"))
+
+    net = U2NETP(3, 1)
     summary(net, input_size=(1, 3, 300, 300), col_names=("input_size", "output_size"))
+
+    # net = Res_Unet(n_channels=3, n_classes=1)
+    # summary(net, input_size=(1, 3, 300, 300), col_names=("input_size", "output_size"))
