@@ -13,7 +13,7 @@ from torch.utils.data import Dataset, DataLoader
 import torchvision.transforms as T
 import torchvision.transforms.functional as TF
 from torchvision.utils import make_grid
-from torchvision.models import resnet50,resnet18, vgg16
+from torchvision.models import resnet50, resnet18, vgg16
 from efficientnet import EfficientNet_b0, EfficientNet_b1, EfficientNet_b2, EfficientNet_b5
 
 from sklearn.model_selection import train_test_split
@@ -95,14 +95,14 @@ def get_train_transform():
         T.RandomRotation(15),
         # T.RandomCrop(204),
         T.ToTensor(),
-        T.Normalize((0, 0, 0), (1, 1, 1))
+        T.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
     ])
 
 
 def get_val_transform():
     return T.Compose([
         T.ToTensor(),
-        T.Normalize((0, 0, 0), (1, 1, 1))
+        T.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
     ])
 
 

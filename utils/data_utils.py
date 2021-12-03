@@ -11,7 +11,6 @@ from tqdm import tqdm
 from PIL import Image
 from os import path
 import torch
-from pathlib import Path
 import xlsxwriter
 import shutil
 
@@ -508,6 +507,64 @@ def devide_dataset_to_small_patches(images_dir, masks_dir, new_dir):
             count += 1
 
 
+def check_casia_mask_image_match(img_dir, mask_dir, ):
+    image_files = glob.glob(os.path.join(img_dir, '*.*'))
+    mask_files = glob.glob(os.path.join(mask_dir, '*.*'))
+    assert len(image_files) == len(image_files)
+    image_names = [os.path.basename(element).split('.')[0] for element in image_files]
+    mask_names = [os.path.basename(element).split('.')[0].replace('_gt', '') for element in mask_files]
+    difference = set(image_names).symmetric_difference(set(mask_names))
+    assert len(difference) == 0
+    print('images and masks all match')
+
+
+def check_datatype(dir):
+    files = glob.glob(os.path.join(dir, '*.*'))
+    exts = [os.path.basename(element).split('.')[1] for element in files]
+    print(set(exts))
+
+
+def move_casia_images(src_dir, dst_dir):
+    if not os.path.exists(dst_dir):
+        os.makedirs(dst_dir)
+    files = glob.glob(os.path.join(src_dir, '*.*'))
+    for file in tqdm(files):
+        filename = os.path.basename(file)
+        filename, file_ext = filename.split('.')[0], filename.split('.')[1]
+        if file_ext == 'tif':
+            im = Image.open(file)
+            out = im.convert('RGB')
+            out.save(os.path.join(dst_dir, "{}.{}".format(filename, 'jpg')), 'JPEG', quality=95)
+        else:
+            copyfile(file, os.path.join(dst_dir, "{}.{}".format(filename, 'jpg')))
+
+
+def move_casia_masks(src_dir, dst_dir):
+    if not os.path.exists(dst_dir):
+        os.makedirs(dst_dir)
+    files = glob.glob(os.path.join(src_dir, '*.*'))
+    for file in tqdm(files):
+        filename = os.path.basename(file)
+        file_name, file_exit = filename.split('.')[0], filename.split('.')[1]
+        type = file_name.split('_')[1]
+        im = Image.open(file)
+        w, h = im.size
+        mask = None
+        if type == 'S':
+            mask = Image.open(os.path.join(DATASET_ROOT, 'CASIA2', 'CM_MASK', "{}_gt.png".format(file_name)))
+        elif type == 'D':
+            mask = Image.open(os.path.join(DATASET_ROOT, 'CASIA2', 'SP_MASK', "{}_gt.png".format(file_name)))
+        else:
+            raise Exception('got other type of forgery, {}'.format(type))
+        assert mask != None
+        mask_w, mask_h = mask.size
+        if mask_w != w or mask_h != h:
+            mask = mask.resize((w, h))
+            mask.save(os.path.join(dst_dir, "{}.{}".format(file_name, 'png')), 'PNG')
+        else:
+            mask.save(os.path.join(dst_dir, "{}.{}".format(file_name, 'png')), 'PNG')
+
+
 def combine_forge_and_rename(destinate_dir, *dataset_dirs):
     class_to_int = {"cm": 0, "sp": 1}
     dataset_number = len(dataset_dirs)
@@ -573,6 +630,34 @@ if __name__ == '__main__':
     #                  os.path.join(copy_move_folder, 'test_and_train'))
     ######################################################################################
     ######################################################################################
-    combine_forge_and_rename(DATASET_ROOT.joinpath('COCO', 'large_cm_sp', 'test'),
-                             DATASET_ROOT.joinpath('COCO', 'coco2017_large_sp', 'A', 'test'),
-                             DATASET_ROOT.joinpath('COCO', 'coco2017_no_overlap_cm', 'A', 'test'))
+    # combine_forge_and_rename(DATASET_ROOT.joinpath('COCO', 'large_cm_sp', 'test'),
+    #                          DATASET_ROOT.joinpath('COCO', 'coco2017_large_sp', 'A', 'test'),
+    #                          DATASET_ROOT.joinpath('COCO', 'coco2017_no_overlap_cm', 'A', 'test'))
+
+    ######################################################################################
+    # check_casia_mask_image_match(DATASET_ROOT.joinpath('CASIA2', 'SP_Tp'),
+    #                              DATASET_ROOT.joinpath('CASIA2', 'SP_MASK'))
+    # check_casia_mask_image_match(DATASET_ROOT.joinpath('CASIA2', 'CM_Tp'),
+    #                              DATASET_ROOT.joinpath('CASIA2', 'CM_MASK'))
+    ######################################################################################
+    check_datatype(DATASET_ROOT.joinpath('CASIA2', 'total','images'))
+    check_datatype(DATASET_ROOT.joinpath('CASIA2', 'total', 'masks'))
+    ######################################################################################
+    # move_casia_images(str(DATASET_ROOT.joinpath('CASIA2', 'CM_Tp')),
+    #                   str(DATASET_ROOT.joinpath('CASIA2', 'total', 'images')))
+    # move_casia_images(str(DATASET_ROOT.joinpath('CASIA2', 'SP_Tp')),
+    #                   str(DATASET_ROOT.joinpath('CASIA2', 'total', 'images')))
+    ######################################################################################
+    # move_casia_masks(
+    #     str(DATASET_ROOT.joinpath('CASIA2', 'total', 'images')), str(DATASET_ROOT.joinpath('CASIA2', 'total', 'masks')))
+    ######################################################################################
+    # img = cv2.imread(str(DATASET_ROOT.joinpath('CASIA2', 'SP_Tp', 'Tp_D_CND_M_N_ani00018_sec00096_00138.tif')))
+    # cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    # cv2.imshow('img_rgb', img)
+    # cv2.waitKey()
+    # cv2.destroyWindow('img_rgb')
+    # cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+    # cv2.imshow('img', img)
+    # cv2.waitKey()
+    # cv2.destroyWindow('img')
+    # print('')

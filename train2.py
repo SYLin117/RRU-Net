@@ -98,7 +98,7 @@ def train_net(net,
     #                        weight_decay=0)
     net.apply(init_weights)
     optimizer = optim.RMSprop(net.parameters(), lr=lr, weight_decay=1e-8, momentum=0.9)
-    # scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'max', patience=2)  # goal: maximize Dice score
+    # lr_scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'max', patience=2)  # goal: maximize Dice score
     # grad_scaler = torch.cuda.amp.GradScaler(enabled=False)
     criterion = nn.BCELoss()
 
@@ -148,12 +148,14 @@ def train_net(net,
 
             loss.backward()
             optimizer.step()
+            # lr_scheduler.step()
 
             experiment.log({
                 'train loss': loss.item(),
                 'step': global_step,
                 'epoch': epoch
             })
+
             if global_step % 1000 == 0:
                 random_index = int(np.random.random() * len(val_set))
                 single_val = val_set[random_index]
