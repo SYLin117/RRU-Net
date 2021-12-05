@@ -216,7 +216,7 @@ if __name__ == '__main__':
     epochs, batchsize, scale, gpu = 50, 2, 1, True
     lr = 1e-5
     ft = False
-    dataset_name = 'casia2'
+    dataset_name = 'new_cm'
     model = 'Res_Unet'
     CURRENT_PATH = str(pathlib.Path().resolve())
     resize = (300, 300)
@@ -269,6 +269,20 @@ if __name__ == '__main__':
         train_dataset = ForgeDataset(dir_img, dir_mask, 1, mask_suffix='', resize=resize)
         dir_img_val = DATASETS_DIR.joinpath('COCO', 'coco2017_superlarge_sp', 'A', 'val')
         dir_mask_val = DATASETS_DIR.joinpath('COCO', 'coco2017_superlarge_sp', 'B', 'val')
+        val_dataset = ForgeDataset(dir_img_val, dir_mask_val, 1, mask_suffix='', resize=resize)
+    elif dataset_name == 'new_sp':
+        dir_img = DATASETS_DIR.joinpath('COCO', 'coco2017_new_sp', 'A', 'train')
+        dir_mask = DATASETS_DIR.joinpath('COCO', 'coco2017_new_sp', 'B', 'train')
+        train_dataset = ForgeDataset(dir_img, dir_mask, 1, mask_suffix='', resize=resize)
+        dir_img_val = DATASETS_DIR.joinpath('COCO', 'coco2017_new_sp', 'A', 'val')
+        dir_mask_val = DATASETS_DIR.joinpath('COCO', 'coco2017_new_sp', 'B', 'val')
+        val_dataset = ForgeDataset(dir_img_val, dir_mask_val, 1, mask_suffix='', resize=resize)
+    elif dataset_name == 'new_cm':
+        dir_img = DATASETS_DIR.joinpath('COCO', 'coco2017_new_cm', 'A', 'train')
+        dir_mask = DATASETS_DIR.joinpath('COCO', 'coco2017_new_cm', 'B', 'train')
+        train_dataset = ForgeDataset(dir_img, dir_mask, 1, mask_suffix='', resize=resize)
+        dir_img_val = DATASETS_DIR.joinpath('COCO', 'coco2017_new_cm', 'A', 'val')
+        dir_mask_val = DATASETS_DIR.joinpath('COCO', 'coco2017_new_cm', 'B', 'val')
         val_dataset = ForgeDataset(dir_img_val, dir_mask_val, 1, mask_suffix='', resize=resize)
     elif dataset_name == 'casia2':
         dir_img = DATASETS_DIR.joinpath('CASIA2', 'split', 'train', 'images')
