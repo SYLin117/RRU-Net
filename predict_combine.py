@@ -17,6 +17,20 @@ def predict_img(classifier,
                 full_img,
                 resize=(300, 300),
                 use_gpu=True):
+    """
+    先使用classifier分類sp or cm
+    再分別使用sp與cm的模型
+    Args:
+        classifier:
+        net1:
+        net2:
+        full_img:
+        resize:
+        use_gpu:
+
+    Returns:
+
+    """
     tf = T.Compose([
         T.Resize([resize[0], resize[1]], InterpolationMode.BICUBIC),
         T.ToTensor(),
@@ -30,12 +44,14 @@ def predict_img(classifier,
     if use_gpu:
         img = img.cuda()
 
+    mask = None
     with torch.no_grad():
         pred = classifier(img)
-
-        mask = net1(img)
+        if pred <= 0.5:
+            mask = net1(img)
+        else:
+            mask = net2(img)
         mask = torch.sigmoid(mask).squeeze().cpu().numpy()
-    # return mask > out_threshold
     return mask
 
 
@@ -54,7 +70,7 @@ def get_output_filenames(file_list, predict_subfolder='predict'):
         filename = os.path.split(fn)[1]
         split = os.path.splitext(filename)
         # return os.path.join(OUTPUT_ROOT, f'{split[0]}_OUT{split[1]}')
-        return os.path.join(OUTPUT_ROOT, f'{split[0]}_OUT.png')
+        return os.path.join(OUTPUT_ROOT, f'{split[0]}.png')
 
     out_list = list(map(_generate_name, file_list))
     return out_list
@@ -74,22 +90,22 @@ if __name__ == "__main__":
     import pathlib
 
     DATASETS_DIR = get_dataset_root()
-    scale, mask_threshold, cpu, viz, no_save = 1, 0.5, False, False, True
+    scale, mask_threshold, cpu, viz, no_save = 1, 0.5, False, False, False
     # model: 'Unet', 'Res_Unet', 'Ringed_Res_Unet'
 
     current_path = str(pathlib.Path().resolve())
     classifier = 'EFFICIENTNET_B0'
-    network1 = 'Ringed_Res_Unet'
-    network2 = 'Ringed_Res_Unet'
+    network1 = 'Res_Unet'  # cm
+    network2 = 'Res_Unet'  # sp
     resize = (300, 300)
-    #######################################################################################
+    # =========== 設定處裡的資料路徑 =============
     in_files = os.path.join(DATASETS_DIR, 'CASIA2', 'total', 'images')
     gt_files = os.path.join(DATASETS_DIR, 'CASIA2', 'total', 'masks')
-    ##########################################COPY-MOVE MODEL###########################################################
-    model_classifier = os.path.join(current_path, 'result', 'logs', 'large_cm_sp', classifier, 'best_model.pth.pth')
-    model1 = os.path.join(current_path, 'result', 'logs', 'superlarge_cm', network1, 'best_model.pth.pth')
-    model2 = os.path.join(current_path, 'result', 'logs', 'superlarge_sp', network2, 'best_model.pth.pth')
-    ##########################################SPLICING MODEL###########################################################
+    # =========== 設定pretrain模型路徑 =============
+    model_classifier = os.path.join(current_path, 'result', 'logs', 'large_cm_sp', classifier, 'best_model.pth')
+    model1 = os.path.join(current_path, 'result', 'logs', 'superlarge_cm', network1, 'best_model.pth')
+    model2 = os.path.join(current_path, 'result', 'logs', 'superlarge_sp', network2, 'best_model.pth')
+    # =========== 設定classifier使用模型 =============
     net_classifier, net1, net2 = None, None, None
     if classifier == "EFFICIENTNET_B0":
         net_classifier = EfficientNet_b0(num_classes=1)
@@ -103,7 +119,8 @@ if __name__ == "__main__":
         net_classifier.cpu()
         net_classifier.load_state_dict(torch.load(model_classifier, map_location='cpu'))
         print("Using CPU version of the net, this may be very slow")
-
+    net_classifier.eval()
+    # =========== 設定net1使用模型 =============
     if network1 == 'Unet':
         net1 = Unet(n_channels=3, n_classes=1)
     elif network1 == 'Res_Unet':
@@ -123,8 +140,8 @@ if __name__ == "__main__":
     else:
         net1.cpu()
         net1.load_state_dict(torch.load(model1, map_location='cpu'))
-        print("Using CPU version of the net, this may be very slow")
-
+        print("net1: Using CPU version of the net, this may be very slow")
+    # =========== 設定net2使用模型 =============
     if network2 == 'Unet':
         net2 = Unet(n_channels=3, n_classes=1)
     elif network2 == 'Res_Unet':
@@ -144,8 +161,8 @@ if __name__ == "__main__":
     else:
         net2.cpu()
         net2.load_state_dict(torch.load(model1, map_location='cpu'))
-        print("Using CPU version of the net, this may be very slow")
-
+        print("net2: Using CPU version of the net, this may be very slow")
+    # =========== 開始預測 =============
     if isinstance(in_files, str):
         if os.path.isfile(in_files):
             print("path is file")
@@ -165,8 +182,8 @@ if __name__ == "__main__":
             # print("input folder got {} files".format(len(input_files)))
             output_files = get_output_filenames(input_files)
             for i, filename in enumerate(tqdm(input_files)):
-
-                gt_mask = cv2.imread(os.path.join(DATASETS_DIR, 'CASIA2', 'total', 'masks'), cv2.IMREAD_GRAYSCALE)
+                file_name, file_ext = os.path.basename(filename).split('.')[0], os.path.basename(filename).split('.')[1]
+                gt_mask = cv2.imread(os.path.join(DATASETS_DIR, 'CASIA2', 'total', 'masks', '{}.png'.format(file_name)), cv2.IMREAD_GRAYSCALE)
                 (_, gt_mask) = cv2.threshold(gt_mask, 125, 1, cv2.THRESH_BINARY)
 
                 img = Image.open(filename).convert('RGB')  # cause some image got 4 channel(RGBA), eg:001221 file
@@ -174,7 +191,9 @@ if __name__ == "__main__":
                 pixel_list.append(width * height)
                 try:
                     start_time = time.time()
-                    mask = predict_img(net=net,
+                    mask = predict_img(classifier=net_classifier,
+                                       net1=net1,
+                                       net2=net2,
                                        full_img=img,
                                        resize=resize,
                                        use_gpu=not cpu)
@@ -197,8 +216,8 @@ if __name__ == "__main__":
                     tp_list.append(tp)
                     if not no_save:
                         out_filename = output_files[i]
-                        mask_no = mask_regex.match(os.path.split(out_filename)[1]).groups()[0]
-                        assert int(file_no) == int(mask_no), "file number and mask number not match"
+                        # mask_no = mask_regex.match(os.path.split(out_filename)[1]).groups()[0]
+                        # assert int(file_no) == int(mask_no), "file number and mask number not match"
                         result = mask_to_image(save_mask)
                         result = result.resize((width, height))
                         result.save(out_filename)

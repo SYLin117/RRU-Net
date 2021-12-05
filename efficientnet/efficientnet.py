@@ -4,16 +4,20 @@ import torch.nn as nn
 
 
 class EfficientNet_b0(nn.Module):
-    def __init__(self, num_classes=1):
+    def __init__(self, num_classes=1, pretrained=True):
         super(EfficientNet_b0, self).__init__()
+        # if pretrained:
+        #     self.model = EfficientNet.from_pretrained('efficientnet-b0')
+        # else:
+        #     self.model = EfficientNet.
         self.model = EfficientNet.from_pretrained('efficientnet-b0')
         self.classifier = nn.Sequential(
             nn.Linear(1280, 512, bias=True),
             nn.BatchNorm1d(512),
-            nn.Dropout(0.2),
+            nn.Dropout(0.5),
             nn.Linear(512, 256, bias=True),
             nn.BatchNorm1d(256),
-            nn.Dropout(0.2),
+            nn.Dropout(0.5),
             nn.Linear(256, num_classes, bias=True),
             nn.Sigmoid()
         )

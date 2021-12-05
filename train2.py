@@ -1,4 +1,6 @@
+import os
 import os.path
+os.environ['KMP_DUPLICATE_LIB_OK'] = "TRUE"
 
 import torch.backends.cudnn as cudnn
 from torch import optim
@@ -214,8 +216,8 @@ if __name__ == '__main__':
     epochs, batchsize, scale, gpu = 50, 2, 1, True
     lr = 1e-5
     ft = False
-    dataset_name = 'superlarge_sp'
-    model = 'U2Net'
+    dataset_name = 'casia2'
+    model = 'Res_Unet'
     CURRENT_PATH = str(pathlib.Path().resolve())
     resize = (300, 300)
 
@@ -268,6 +270,11 @@ if __name__ == '__main__':
         dir_img_val = DATASETS_DIR.joinpath('COCO', 'coco2017_superlarge_sp', 'A', 'val')
         dir_mask_val = DATASETS_DIR.joinpath('COCO', 'coco2017_superlarge_sp', 'B', 'val')
         val_dataset = ForgeDataset(dir_img_val, dir_mask_val, 1, mask_suffix='', resize=resize)
+    elif dataset_name == 'casia2':
+        dir_img = DATASETS_DIR.joinpath('CASIA2', 'split', 'train', 'images')
+        dir_mask = DATASETS_DIR.joinpath('CASIA2', 'split', 'train', 'masks')
+        train_dataset = ForgeDataset(dir_img, dir_mask, 1, mask_suffix='', resize=resize)
+        val_dataset = None
     else:
         raise Exception("dataset not include")
     train_net(net=net,

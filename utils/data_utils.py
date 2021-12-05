@@ -6,7 +6,7 @@ import os
 import re
 import imutils
 from shutil import copyfile
-from random import randint, shuffle
+from random import randint, shuffle, random
 from tqdm import tqdm
 from PIL import Image
 from os import path
@@ -20,7 +20,6 @@ DATASET_ROOT = get_dataset_root()
 
 
 def split_train_test(orig_folder, gt_folder, new_folder):
-    no_regex = re.compile(r'([0-9]+)\.jpg')
     TRAIN = 0
     TEST = 1
     train_orig_folder = os.path.join(new_folder, "train")  # 新的train資料夾
@@ -40,10 +39,10 @@ def split_train_test(orig_folder, gt_folder, new_folder):
         os.makedirs(test_mask_folder)
 
     def get_type():
-        tmp = randint(1, 10)
-        if tmp >= 2:
+        tmp = random()
+        if tmp >= 0.15:
             return TRAIN
-        elif tmp == 1:
+        else:
             return TEST
 
     img_list = [f for f in os.listdir(orig_folder)]
@@ -640,8 +639,8 @@ if __name__ == '__main__':
     # check_casia_mask_image_match(DATASET_ROOT.joinpath('CASIA2', 'CM_Tp'),
     #                              DATASET_ROOT.joinpath('CASIA2', 'CM_MASK'))
     ######################################################################################
-    check_datatype(DATASET_ROOT.joinpath('CASIA2', 'total','images'))
-    check_datatype(DATASET_ROOT.joinpath('CASIA2', 'total', 'masks'))
+    # check_datatype(DATASET_ROOT.joinpath('CASIA2', 'total','images'))
+    # check_datatype(DATASET_ROOT.joinpath('CASIA2', 'total', 'masks'))
     ######################################################################################
     # move_casia_images(str(DATASET_ROOT.joinpath('CASIA2', 'CM_Tp')),
     #                   str(DATASET_ROOT.joinpath('CASIA2', 'total', 'images')))
@@ -650,6 +649,9 @@ if __name__ == '__main__':
     ######################################################################################
     # move_casia_masks(
     #     str(DATASET_ROOT.joinpath('CASIA2', 'total', 'images')), str(DATASET_ROOT.joinpath('CASIA2', 'total', 'masks')))
+    split_train_test(str(DATASET_ROOT.joinpath('CASIA2', 'total', 'images')),
+                     str(DATASET_ROOT.joinpath('CASIA2', 'total', 'masks')),
+                         str(DATASET_ROOT.joinpath('CASIA2', 'split')))
     ######################################################################################
     # img = cv2.imread(str(DATASET_ROOT.joinpath('CASIA2', 'SP_Tp', 'Tp_D_CND_M_N_ani00018_sec00096_00138.tif')))
     # cv2.cvtColor(img, cv2.COLOR_BGR2RGB)

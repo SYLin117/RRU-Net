@@ -32,7 +32,7 @@ DATASETS_DIR = get_dataset_root()
 DIR_TRAIN = os.path.join(DATASETS_DIR, 'COCO', DATASET_NAME, 'train')
 DIR_TEST = os.path.join(DATASETS_DIR, 'COCO', DATASET_NAME, 'test')
 CURRENT_PATH = str(pathlib.Path().resolve())
-MODEL_NAME = 'RESNET18'
+MODEL_NAME = 'EFFICIENTNET_B1'
 DIR_LOGS = os.path.join(CURRENT_PATH, 'result', 'logs', 'large_cm_sp', MODEL_NAME)
 if not os.path.exists(DIR_LOGS):
     os.makedirs(DIR_LOGS)
@@ -248,15 +248,15 @@ if __name__ == "__main__":
 
     train_data_loader = DataLoader(
         dataset=train_dataset,
-        num_workers=4,
-        batch_size=8,
+        num_workers=8,
+        batch_size=4,
         drop_last=True,
         shuffle=True
     )
 
     val_data_loader = DataLoader(
         dataset=val_dataset,
-        num_workers=4,
+        num_workers=8,
         batch_size=4,
         drop_last=True,
         shuffle=True
@@ -264,20 +264,13 @@ if __name__ == "__main__":
 
     test_data_loader = DataLoader(
         dataset=test_dataset,
-        num_workers=4,
+        num_workers=8,
         batch_size=4,
         drop_last=True,
         shuffle=True
     )
 
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-
-    # for images, labels in train_data_loader:
-    #     fig, ax = plt.subplots(figsize=(10, 10))
-    #     ax.set_xticks([])
-    #     ax.set_yticks([])
-    #     ax.imshow(make_grid(images, 4).permute(1, 2, 0))
-    #     break
 
     fine_tune = False
     start_epoch = 0
@@ -334,6 +327,8 @@ if __name__ == "__main__":
         )
     elif MODEL_NAME == "EFFICIENTNET_B0":
         model = EfficientNet_b0(num_classes=1)
+    elif MODEL_NAME == "EFFICIENTNET_B1":
+        model = EfficientNet_b1(num_classes=1)
     elif MODEL_NAME == "EFFICIENTNET_B2":
         model = EfficientNet_b2(num_classes=1)
     elif MODEL_NAME == "EFFICIENTNET_B5":
