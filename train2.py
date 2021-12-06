@@ -1,12 +1,13 @@
 import os
 import os.path
+
 os.environ['KMP_DUPLICATE_LIB_OK'] = "TRUE"
 
 import torch.backends.cudnn as cudnn
 from torch import optim
 
 from eval import eval_net, dice_loss
-from unet.unet_model import *
+from unet.unet_model import Unet, SRM_Unet, Res_Unet, Ringed_Res_Unet
 from utils import *
 
 import matplotlib.pyplot as plt
@@ -217,7 +218,7 @@ if __name__ == '__main__':
     lr = 1e-5
     ft = False
     dataset_name = 'new_cm'
-    model = 'Res_Unet'
+    model = 'SRM_Unet'
     CURRENT_PATH = str(pathlib.Path().resolve())
     resize = (300, 300)
 
@@ -226,6 +227,8 @@ if __name__ == '__main__':
         os.makedirs(dir_logs)
     if model == 'Unet':
         net = Unet(n_channels=3, n_classes=1)
+    if model == 'SRM_Unet':
+        net = SRM_Unet(n_channels=3, n_classes=1)
     elif model == 'Res_Unet':
         net = Res_Unet(n_channels=3, n_classes=1)
     elif model == 'Ringed_Res_Unet':
