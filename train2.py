@@ -218,21 +218,25 @@ if __name__ == '__main__':
     lr = 1e-5
     ft = False
     dataset_name = 'new_cm'
-    model = 'SRM_Unet'
+    model = 'SRM_Ringed_Res_Unet'
     CURRENT_PATH = str(pathlib.Path().resolve())
     resize = (300, 300)
 
     dir_logs = os.path.join(CURRENT_PATH, 'result', 'logs', dataset_name, model)
     if not os.path.exists(dir_logs):
         os.makedirs(dir_logs)
-    if model == 'Unet':
+    elif model == 'Unet':
         net = Unet(n_channels=3, n_classes=1)
-    if model == 'SRM_Unet':
+    elif model == 'SRM_Unet':
         net = SRM_Unet(n_channels=3, n_classes=1)
     elif model == 'Res_Unet':
         net = Res_Unet(n_channels=3, n_classes=1)
+    elif model == 'SRM_Res_Unet':
+        net = SRM_Res_Unet(n_channels=3, n_classes=1)
     elif model == 'Ringed_Res_Unet':
         net = Ringed_Res_Unet(n_channels=3, n_classes=1)
+    elif model == 'SRM_Ringed_Res_Unet':
+        net = SRM_Ringed_Res_Unet(n_channels=3, n_classes=1)
     elif model == 'U2Net':
         net = U2NET(in_ch=3, out_ch=1)
     elif model == 'U2NetP':
