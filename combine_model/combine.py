@@ -76,9 +76,9 @@ class CombineModel(nn.Module):
         super(CombineModel, self).__init__()
         self.model1 = model1
         self.model2 = model2
-        self.out = outconv(2, n_classes)
         self.srm_layer = SRMConv(3, 3)
         self.inceptionA = InceptionA(8, 1)
+        self.out = outconv(225, n_classes)
 
     def forward(self, x):
         srm_feature = self.srm_layer(x)
@@ -90,6 +90,10 @@ class CombineModel(nn.Module):
 
         x1 = F.pad(x1, (diffY, 0,
                         diffX, 0))
-        x = torch.cat([x2, x1, srm_feature, x], dim=1)
-        x = self.inceptionA(x)
-        return x
+        x3 = torch.cat([x2, x1, srm_feature, x], dim=1)
+        x4 = self.inceptionA(x3)
+        y = self.out(x4)
+        return y
+
+
+

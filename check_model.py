@@ -19,7 +19,7 @@ from efficientnet_pytorch import EfficientNet
 from efficientnet import EfficientNet_b0, EfficientNet_b1, EfficientNet_b2, EfficientNet_b3, EfficientNet_b4, \
     EfficientNet_b5
 from u2net_model import U2NET, U2NETP
-from combine_model import CombineModel
+from combine_model import CombineModel, outconv
 
 if __name__ == '__main__':
     print("===main===")
@@ -60,10 +60,12 @@ if __name__ == '__main__':
     # print(net)
     # summary(net, input_size=(1, 3, 300, 300), col_names=("input_size", "output_size"))
 
+    # tmp = outconv(255, 1)
+    # summary(tmp, input_size=(1, 255, 300, 300), col_names=("input_size", "output_size", "num_params"))
+
     net1 = Unet(3, 1)
     net2 = Res_Unet(3, 1)
     net = CombineModel(net1, net2, 1)
-
     summary(net, input_size=(1, 3, 300, 300), col_names=("input_size", "output_size", "num_params"))
 
     # net = Res_Unet(n_channels=3, n_classes=1)
