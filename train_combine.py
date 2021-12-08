@@ -2,25 +2,18 @@ import os
 import os.path
 
 os.environ['KMP_DUPLICATE_LIB_OK'] = "TRUE"
-
-import torch.backends.cudnn as cudnn
-from torch import optim
-
-from eval import eval_net, dice_loss
-from utils import *
-
+import math
 import matplotlib.pyplot as plt
 import time
-
 import wandb
+import torch.backends.cudnn as cudnn
+from torch import optim
+from eval import eval_net, dice_loss
+from utils import *
 from transunet import MyTransUNet
-
-import re
 from tqdm import tqdm
-
 from u2net_model import U2NET, U2NETP
 from unet import FCNs, VGGNet
-import math
 
 
 def init_weights(m):
@@ -212,96 +205,113 @@ if __name__ == '__main__':
     """
     修改train.py並使用Pytorch Dataset 做為資料讀取的方式
     """
+
+
+    def get_model(model):
+        net = None
+        if model == 'FCN':
+            vgg_model = VGGNet()
+            net = FCNs(pretrained_net=vgg_model, n_class=1)
+        elif model == 'Unet':
+            net = Unet(n_channels=3, n_classes=1)
+        elif model == 'SRM_Unet':
+            net = SRM_Unet(n_channels=3, n_classes=1)
+        elif model == 'Res_Unet':
+            net = Res_Unet(n_channels=3, n_classes=1)
+        elif model == 'SRM_Res_Unet':
+            net = SRM_Res_Unet(n_channels=3, n_classes=1)
+        elif model == 'Ringed_Res_Unet':
+            net = Ringed_Res_Unet(n_channels=3, n_classes=1)
+        elif model == 'SRM_Ringed_Res_Unet':
+            net = SRM_Ringed_Res_Unet(n_channels=3, n_classes=1)
+        elif model == 'U2Net':
+            net = U2NET(in_ch=3, out_ch=1)
+        elif model == 'U2NetP':
+            net = U2NETP(in_ch=3, out_ch=1)
+        elif model == 'MyTransUnet':
+            net = MyTransUNet(in_channels=3, classes=1, img_dim=resize[0])
+        elif model == 'MyTransUnet2':
+            net = MyTransUNet2(in_channels=3, classes=1, img_dim=resize[0])
+        else:
+            raise Exception("model not implements.")
+        assert net != None
+        return net
+    def get_dataset(dataset_name):
+        DATASETS_DIR = get_dataset_root()
+        if dataset_name == 'superlarge_cm':
+            dir_img = DATASETS_DIR.joinpath('COCO', 'coco2017_superlarge_cm', 'A', 'train')
+            dir_mask = DATASETS_DIR.joinpath('COCO', 'coco2017_superlarge_cm', 'B', 'train')
+            train_dataset = ForgeDataset(dir_img, dir_mask, 1, mask_suffix='', resize=resize)
+            dir_img_val = DATASETS_DIR.joinpath('COCO', 'coco2017_superlarge_cm', 'A', 'val')
+            dir_mask_val = DATASETS_DIR.joinpath('COCO', 'coco2017_superlarge_cm', 'B', 'val')
+            val_dataset = ForgeDataset(dir_img_val, dir_mask_val, 1, mask_suffix='', resize=resize)
+        elif dataset_name == 'superlarge_sp':
+            dir_img = DATASETS_DIR.joinpath('COCO', 'coco2017_superlarge_sp', 'A', 'train')
+            dir_mask = DATASETS_DIR.joinpath('COCO', 'coco2017_superlarge_sp', 'B', 'train')
+            train_dataset = ForgeDataset(dir_img, dir_mask, 1, mask_suffix='', resize=resize)
+            dir_img_val = DATASETS_DIR.joinpath('COCO', 'coco2017_superlarge_sp', 'A', 'val')
+            dir_mask_val = DATASETS_DIR.joinpath('COCO', 'coco2017_superlarge_sp', 'B', 'val')
+            val_dataset = ForgeDataset(dir_img_val, dir_mask_val, 1, mask_suffix='', resize=resize)
+        elif dataset_name == 'new_sp':
+            dir_img = DATASETS_DIR.joinpath('COCO', 'coco2017_new_sp', 'A', 'train')
+            dir_mask = DATASETS_DIR.joinpath('COCO', 'coco2017_new_sp', 'B', 'train')
+            train_dataset = ForgeDataset(dir_img, dir_mask, 1, mask_suffix='', resize=resize)
+            dir_img_val = DATASETS_DIR.joinpath('COCO', 'coco2017_new_sp', 'A', 'val')
+            dir_mask_val = DATASETS_DIR.joinpath('COCO', 'coco2017_new_sp', 'B', 'val')
+            val_dataset = ForgeDataset(dir_img_val, dir_mask_val, 1, mask_suffix='', resize=resize)
+        elif dataset_name == 'new_cm':
+            dir_img = DATASETS_DIR.joinpath('COCO', 'coco2017_new_cm', 'A', 'train')
+            dir_mask = DATASETS_DIR.joinpath('COCO', 'coco2017_new_cm', 'B', 'train')
+            train_dataset = ForgeDataset(dir_img, dir_mask, 1, mask_suffix='', resize=resize)
+            dir_img_val = DATASETS_DIR.joinpath('COCO', 'coco2017_new_cm', 'A', 'val')
+            dir_mask_val = DATASETS_DIR.joinpath('COCO', 'coco2017_new_cm', 'B', 'val')
+            val_dataset = ForgeDataset(dir_img_val, dir_mask_val, 1, mask_suffix='', resize=resize)
+        elif dataset_name == 'casia2':
+            dir_img = DATASETS_DIR.joinpath('CASIA2', 'split', 'train', 'images')
+            dir_mask = DATASETS_DIR.joinpath('CASIA2', 'split', 'train', 'masks')
+            train_dataset = ForgeDataset(dir_img, dir_mask, 1, mask_suffix='', resize=resize)
+            val_dataset = None
+        else:
+            raise Exception("dataset not include")
+        return train_dataset, val_dataset
+
+
+
     import pathlib
 
     epochs, batchsize, scale, gpu = 50, 2, 1, True
     lr = 1e-5
     ft = False
-    dataset_name = 'new_cm'
-    model = 'SRM_Ringed_Res_Unet'
+    dataset_name1 = 'new_cm'
+    dataset_name2 = 'new_sp'
+    model1 = 'SRM_Ringed_Res_Unet'
+    model2 = 'UNet'
     CURRENT_PATH = str(pathlib.Path().resolve())
     resize = (300, 300)
 
-    dir_logs = os.path.join(CURRENT_PATH, 'result', 'logs', dataset_name, model)
-    if not os.path.exists(dir_logs):
-        os.makedirs(dir_logs)
+    dir_logs1 = os.path.join(CURRENT_PATH, 'result', 'logs', dataset_name1, model1)
+    if not os.path.exists(dir_logs1):
+        os.makedirs(dir_logs1)
+    dir_logs2 = os.path.join(CURRENT_PATH, 'result', 'logs', dataset_name2, model2)
+    if not os.path.exists(dir_logs2):
+        os.makedirs(dir_logs2)
 
-    if model == 'FCN':
-        vgg_model = VGGNet()
-        model = FCNs(pretrained_net=vgg_model, n_class=1)
-    if model == 'Unet':
-        net = Unet(n_channels=3, n_classes=1)
-    elif model == 'SRM_Unet':
-        net = SRM_Unet(n_channels=3, n_classes=1)
-    elif model == 'Res_Unet':
-        net = Res_Unet(n_channels=3, n_classes=1)
-    elif model == 'SRM_Res_Unet':
-        net = SRM_Res_Unet(n_channels=3, n_classes=1)
-    elif model == 'Ringed_Res_Unet':
-        net = Ringed_Res_Unet(n_channels=3, n_classes=1)
-    elif model == 'SRM_Ringed_Res_Unet':
-        net = SRM_Ringed_Res_Unet(n_channels=3, n_classes=1)
-    elif model == 'U2Net':
-        net = U2NET(in_ch=3, out_ch=1)
-    elif model == 'U2NetP':
-        net = U2NETP(in_ch=3, out_ch=1)
-    elif model == 'MyTransUnet':
-        net = MyTransUNet(in_channels=3, classes=1, img_dim=resize[0])
-    elif model == 'MyTransUnet2':
-        net = MyTransUNet2(in_channels=3, classes=1, img_dim=resize[0])
-    else:
-        raise Exception("model not implements.")
+    net1 = get_model(model1)
+    net2 = get_model(model2)
 
-    id = None
-    latest_epoch = None
-    if ft:
-        fine_tuning_model, latest_epoch = find_latest_epoch(
-            os.path.join(CURRENT_PATH, 'result', 'logs', dataset_name, model, ))
-        net.load_state_dict(torch.load(fine_tuning_model))
-        epochs = epochs - latest_epoch
-        print('Model loaded from {}'.format(fine_tuning_model))
-        id = '2f3silq6'
+    pretrained_model, _ = find_latest_epoch(dir_logs1)
+    net1.load_state_dict(torch.load(pretrained_model))
+
+    pretrained_model, _ = find_latest_epoch(dir_logs2)
+    net2.load_state_dict(torch.load(pretrained_model))
+
+
 
     if gpu:
         net.cuda()
         cudnn.benchmark = True  # faster convolutions, but more memory
 
-    DATASETS_DIR = get_dataset_root()
-    if dataset_name == 'superlarge_cm':
-        dir_img = DATASETS_DIR.joinpath('COCO', 'coco2017_superlarge_cm', 'A', 'train')
-        dir_mask = DATASETS_DIR.joinpath('COCO', 'coco2017_superlarge_cm', 'B', 'train')
-        train_dataset = ForgeDataset(dir_img, dir_mask, 1, mask_suffix='', resize=resize)
-        dir_img_val = DATASETS_DIR.joinpath('COCO', 'coco2017_superlarge_cm', 'A', 'val')
-        dir_mask_val = DATASETS_DIR.joinpath('COCO', 'coco2017_superlarge_cm', 'B', 'val')
-        val_dataset = ForgeDataset(dir_img_val, dir_mask_val, 1, mask_suffix='', resize=resize)
-    elif dataset_name == 'superlarge_sp':
-        dir_img = DATASETS_DIR.joinpath('COCO', 'coco2017_superlarge_sp', 'A', 'train')
-        dir_mask = DATASETS_DIR.joinpath('COCO', 'coco2017_superlarge_sp', 'B', 'train')
-        train_dataset = ForgeDataset(dir_img, dir_mask, 1, mask_suffix='', resize=resize)
-        dir_img_val = DATASETS_DIR.joinpath('COCO', 'coco2017_superlarge_sp', 'A', 'val')
-        dir_mask_val = DATASETS_DIR.joinpath('COCO', 'coco2017_superlarge_sp', 'B', 'val')
-        val_dataset = ForgeDataset(dir_img_val, dir_mask_val, 1, mask_suffix='', resize=resize)
-    elif dataset_name == 'new_sp':
-        dir_img = DATASETS_DIR.joinpath('COCO', 'coco2017_new_sp', 'A', 'train')
-        dir_mask = DATASETS_DIR.joinpath('COCO', 'coco2017_new_sp', 'B', 'train')
-        train_dataset = ForgeDataset(dir_img, dir_mask, 1, mask_suffix='', resize=resize)
-        dir_img_val = DATASETS_DIR.joinpath('COCO', 'coco2017_new_sp', 'A', 'val')
-        dir_mask_val = DATASETS_DIR.joinpath('COCO', 'coco2017_new_sp', 'B', 'val')
-        val_dataset = ForgeDataset(dir_img_val, dir_mask_val, 1, mask_suffix='', resize=resize)
-    elif dataset_name == 'new_cm':
-        dir_img = DATASETS_DIR.joinpath('COCO', 'coco2017_new_cm', 'A', 'train')
-        dir_mask = DATASETS_DIR.joinpath('COCO', 'coco2017_new_cm', 'B', 'train')
-        train_dataset = ForgeDataset(dir_img, dir_mask, 1, mask_suffix='', resize=resize)
-        dir_img_val = DATASETS_DIR.joinpath('COCO', 'coco2017_new_cm', 'A', 'val')
-        dir_mask_val = DATASETS_DIR.joinpath('COCO', 'coco2017_new_cm', 'B', 'val')
-        val_dataset = ForgeDataset(dir_img_val, dir_mask_val, 1, mask_suffix='', resize=resize)
-    elif dataset_name == 'casia2':
-        dir_img = DATASETS_DIR.joinpath('CASIA2', 'split', 'train', 'images')
-        dir_mask = DATASETS_DIR.joinpath('CASIA2', 'split', 'train', 'masks')
-        train_dataset = ForgeDataset(dir_img, dir_mask, 1, mask_suffix='', resize=resize)
-        val_dataset = None
-    else:
-        raise Exception("dataset not include")
+
     train_net(net=net,
               epochs=epochs,
               batch_size=batchsize,
