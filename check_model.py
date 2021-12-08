@@ -64,7 +64,7 @@ if __name__ == '__main__':
     net2 = Res_Unet(3, 1)
     net = CombineModel(net1, net2, 1)
 
-    summary(net, input_size=(1, 3, 300, 300), col_names=("input_size", "output_size"))
+    summary(net, input_size=(1, 3, 300, 300), col_names=("input_size", "output_size", "num_params"))
 
     # net = Res_Unet(n_channels=3, n_classes=1)
     # summary(net, input_size=(1, 3, 300, 300), col_names=("input_size", "output_size"))

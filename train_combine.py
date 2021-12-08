@@ -8,12 +8,14 @@ import time
 import wandb
 import torch.backends.cudnn as cudnn
 from torch import optim
+from torch.utils.data import ConcatDataset
 from eval import eval_net, dice_loss
 from utils import *
 from transunet import MyTransUNet
 from tqdm import tqdm
 from u2net_model import U2NET, U2NETP
 from unet import FCNs, VGGNet
+from combine_model import CombineModel
 
 
 def init_weights(m):
@@ -36,31 +38,60 @@ def train_net(net,
               save_cp=True,
               gpu=False,
               resize=(256, 256),
-              train_dataset=None,
-              val_dataset=None,
+              train_dataset1=None,
+              val_dataset1=None,
+              train_dataset2=None,
+              val_dataset2=None,
               dir_logs=None,
               model_name='no-model-name',
               resume=False,
               resume_id=None,
               latest_epoch=0,
               project_name=None):
-    # training images are square
-    # ids = split_ids(get_ids(dir_img))
-    # iddataset = split_train_val(ids, val_percent)
+    def split_dataset(train_dataset, val_dataset):
+        """
+        分割資料集
+        且將資料及轉換為dataloader
+        """
+        assert train_dataset != None
+        n_val = int(len(train_dataset) * val_percent) if not val_dataset else len(val_dataset)
+        n_train = len(train_dataset) - n_val if not val_dataset else len(train_dataset)
+        if not val_dataset:
+            train_set, val_set = random_split(train_dataset1, [n_train, n_val],
+                                              generator=torch.Generator().manual_seed(0))
+        else:
+            train_set = train_dataset
+            val_set = val_dataset
 
-    # dataset = ForgeDataset(dir_img, dir_mask, 1, mask_suffix='', resize=(300, 300))
-    n_val = int(len(train_dataset) * val_percent) if not val_dataset else len(val_dataset)
-    n_train = len(train_dataset) - n_val if not val_dataset else len(train_dataset)
-    if not val_dataset:
-        train_set, val_set = random_split(train_dataset, [n_train, n_val], generator=torch.Generator().manual_seed(0))
-    else:
-        train_set = train_dataset
-        val_set = val_dataset
+        # train_args = dict(batch_size=batch_size, num_workers=4, pin_memory=True)
+        # train_loader = DataLoader(train_set, shuffle=False, **train_args)
+        # val_args = dict(batch_size=1, num_workers=4, pin_memory=True)
+        # val_loader = DataLoader(val_set, shuffle=False, drop_last=True, **val_args)
+        return train_set, val_set
 
+    def itr_merge(*itrs):
+        for itr in itrs:
+            for v in itr:
+                yield v
+
+    train_set1, val_set1 = split_dataset(train_dataset1, val_dataset1)
+    train_set2, val_set2 = split_dataset(train_dataset2, val_dataset2)
+    train_set = ConcatDataset([train_set1, train_set2])
+    val_set = ConcatDataset([val_set1, val_set2])
     train_args = dict(batch_size=batch_size, num_workers=4, pin_memory=True)
     train_loader = DataLoader(train_set, shuffle=False, **train_args)
     val_args = dict(batch_size=1, num_workers=4, pin_memory=True)
     val_loader = DataLoader(val_set, shuffle=False, drop_last=True, **val_args)
+
+    # # ==================== 合併資料集 ==================================
+    # # ==================== copy-move dataset===========================
+    # train_loader1, val_loader1 = split_dataset(train_dataset1, val_dataset1)
+    # # ==================== splicing dataset===========================
+    # train_loader2, val_loader2 = split_dataset(train_dataset2, val_dataset2)
+    #
+    # train_loader = itr_merge(train_loader1, train_loader2)
+    # val_loader = itr_merge(val_loader1, val_loader2)
+    # # ==================== 合併資料集 ==================================
 
     id = wandb.util.generate_id() if not resume else resume_id
     experiment = wandb.init(project=project_name.replace("_", "-"), id=id, resume='allow', anonymous='must')
@@ -71,20 +102,17 @@ def train_net(net,
     else:
         experiment.config.update(dict(epochs=latest_epoch, batch_size=batch_size, learning_rate=lr,
                                       val_percent=val_percent, resize=resize, checkpoints=save_cp, gpu=gpu))
+
     print('''
     Starting training:
         Epochs: {}
         Batch size: {}
         Learning rate: {}
-        Training size: {}
-        Validation size: {}
         Checkpoints: {}
         CUDA: {}
     '''.format(epochs,
                batch_size,
                lr,
-               n_train,
-               n_val,
                str(save_cp),
                str(gpu)))
 
@@ -236,6 +264,8 @@ if __name__ == '__main__':
             raise Exception("model not implements.")
         assert net != None
         return net
+
+
     def get_dataset(dataset_name):
         DATASETS_DIR = get_dataset_root()
         if dataset_name == 'superlarge_cm':
@@ -276,7 +306,6 @@ if __name__ == '__main__':
         return train_dataset, val_dataset
 
 
-
     import pathlib
 
     epochs, batchsize, scale, gpu = 50, 2, 1, True
@@ -286,6 +315,8 @@ if __name__ == '__main__':
     dataset_name2 = 'new_sp'
     model1 = 'SRM_Ringed_Res_Unet'
     model2 = 'UNet'
+    model = '{}+{}'.format(model1, model2)
+    project_name = 'combine'
     CURRENT_PATH = str(pathlib.Path().resolve())
     resize = (300, 300)
 
@@ -295,6 +326,7 @@ if __name__ == '__main__':
     dir_logs2 = os.path.join(CURRENT_PATH, 'result', 'logs', dataset_name2, model2)
     if not os.path.exists(dir_logs2):
         os.makedirs(dir_logs2)
+    dir_logs = os.path.join(CURRENT_PATH, 'result', 'logs', '{}+{}'.format(dataset_name1, dataset_name2), model)
 
     net1 = get_model(model1)
     net2 = get_model(model2)
@@ -305,12 +337,13 @@ if __name__ == '__main__':
     pretrained_model, _ = find_latest_epoch(dir_logs2)
     net2.load_state_dict(torch.load(pretrained_model))
 
-
-
+    net = CombineModel(net1, net2, 1)
     if gpu:
         net.cuda()
         cudnn.benchmark = True  # faster convolutions, but more memory
 
+    train_dataset1, val_dataset1 = get_dataset(dataset_name1)
+    train_dataset2, val_dataset2 = get_dataset(dataset_name2)
 
     train_net(net=net,
               epochs=epochs,
@@ -320,11 +353,13 @@ if __name__ == '__main__':
               save_cp=True,
               gpu=gpu,
               resize=resize,
-              train_dataset=train_dataset,
-              val_dataset=val_dataset,
+              train_dataset1=train_dataset1,
+              val_dataset1=val_dataset1,
+              train_dataset2=train_dataset2,
+              val_dataset2=val_dataset2,
               dir_logs=dir_logs,
               model_name=model,
               resume=False,
               resume_id=id,
-              latest_epoch=latest_epoch,
-              project_name=dataset_name)
+              latest_epoch=0,
+              project_name=project_name)
