@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from inception_block import InceptionA, InceptionB
+from .inception_block import InceptionA
 
 
 class outconv(nn.Module):

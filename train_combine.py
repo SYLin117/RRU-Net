@@ -313,8 +313,8 @@ if __name__ == '__main__':
     ft = False
     dataset_name1 = 'new_cm'
     dataset_name2 = 'new_sp'
-    model1 = 'SRM_Ringed_Res_Unet'
-    model2 = 'UNet'
+    model1 = 'SRM_Unet'
+    model2 = 'Unet'
     model = '{}+{}'.format(model1, model2)
     project_name = 'combine'
     CURRENT_PATH = str(pathlib.Path().resolve())
@@ -327,6 +327,8 @@ if __name__ == '__main__':
     if not os.path.exists(dir_logs2):
         os.makedirs(dir_logs2)
     dir_logs = os.path.join(CURRENT_PATH, 'result', 'logs', '{}+{}'.format(dataset_name1, dataset_name2), model)
+    if not os.path.exists(dir_logs):
+        os.makedirs(dir_logs)
 
     net1 = get_model(model1)
     net2 = get_model(model2)
@@ -338,6 +340,10 @@ if __name__ == '__main__':
     net2.load_state_dict(torch.load(pretrained_model))
 
     net = CombineModel(net1, net2, 1)
+    # from torchinfo import summary
+    # summary(net, input_size=(1, 3, 300, 300), col_names=("input_size", "output_size", "num_params"))
+    # exit()
+
     if gpu:
         net.cuda()
         cudnn.benchmark = True  # faster convolutions, but more memory
