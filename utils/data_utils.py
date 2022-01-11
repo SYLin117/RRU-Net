@@ -40,7 +40,7 @@ def split_train_test(orig_folder, gt_folder, new_folder):
 
     def get_type():
         tmp = random()
-        if tmp >= 0.15:
+        if tmp >= 0.10:
             return TRAIN
         else:
             return TEST
@@ -337,35 +337,45 @@ def combine_multiple_dataset():
         s = re.findall("([0-9]+).*$", file_list)
         return (int(s[0]) if s else -1, file_list)
 
+    # excel_file = open(r'/media/ian/WD/datasets/forge_combine/forge_combine.xlsx', )
+    workbook = xlsxwriter.Workbook(r'/media/ian/WD/datasets/forge_combine/forge_combine.xlsx')
+    worksheet = workbook.add_worksheet()
+    worksheet.write('A1', 'file')
+    worksheet.write('B1', 'original_path')
+    worksheet.write('C1', 'class')
+    worksheet.write('D1', 'predict')
+    xml_idx = 2
+
     TYPE = ["SP", "CM"]
-    # SP_DATASET_NAME_LIST = ["CASIA1", "CASIA2", "COCO"]
-    # SP_IMG_DIR_LIST = [r"/media/ian/WD/datasets/CASIA/CASIA 1.0 dataset/Modified Tp/Tp/Sp",
-    #                    r"/media/ian/WD/datasets/CASIA/CASIA2.0_revised/SP_Tp",
-    #                    r"/media/ian/WD/datasets/COCO/coco2017_forge_spliced/train2017"]
-    # SP_MASK_DIR_LIST = [r"/media/ian/WD/datasets/CASIA/CASIA 1.0 dataset/Modified Tp/Tp/Sp_mask",
-    #                     r"/media/ian/WD/datasets/CASIA/casia2groundtruth-master/SP_MASK",
-    #                     r"/media/ian/WD/datasets/COCO/coco2017_forge_spliced/train2017_mask"]
-    #
-    # CM_DATASET_NAME_LIST = ["CASIA1", "CASIA2", "CoMoFoD", "COVERAGE", "COCO"]
-    # CM_IMG_DIR_LIST = [r"/media/ian/WD/datasets/CASIA/CASIA 1.0 dataset/Modified Tp/Tp/CM",
-    #                    r"/media/ian/WD/datasets/CASIA/CASIA2.0_revised/CM_Tp",
-    #                    r"/media/ian/WD/datasets/CoMoFoD/FORGE",
-    #                    r"/media/ian/WD/datasets/COVERAGE/new_forge",
-    #                    r"/media/ian/WD/datasets/COCO/coco2017_forge_copymove/train2017"]
-    # CM_MASK_DIR_LIST = [r"/media/ian/WD/datasets/CASIA/CASIA 1.0 dataset/Modified Tp/Tp/CM_mask",
-    #                     r"/media/ian/WD/datasets/CASIA/casia2groundtruth-master/CM_MASK",
-    #                     r"/media/ian/WD/datasets/CoMoFoD/MASK",
-    #                     r"/media/ian/WD/datasets/COVERAGE/new_mask",
-    #                     r"/media/ian/WD/datasets/COCO/coco2017_forge_copymove/train2017_mask"]
-    # FINAL_IMG_DIR = r"/media/ian/WD/datasets/total_forge/SP/forge"
-    # FINAL_MSK_DIR = r"/media/ian/WD/datasets/total_forge/SP/mask"
+    SP_DATASET_NAME_LIST = ["CASIA1", "CASIA2", "COCO"]
+    SP_IMG_DIR_LIST = [r"/media/ian/WD/datasets/CASIA/CASIA 1.0 dataset/Modified Tp/Tp/Sp",
+                       r"/media/ian/WD/datasets/CASIA/CASIA2.0_revised/SP_Tp",
+                       r"/media/ian/WD/datasets/COCO/coco2017_forge_combine_sp/train2017"]
+    SP_MASK_DIR_LIST = [r"/media/ian/WD/datasets/CASIA/CASIA 1.0 dataset/Modified Tp/Tp/Sp_mask",
+                        r"/media/ian/WD/datasets/CASIA/CASIA2.0_revised/SP_MASK",
+                        r"/media/ian/WD/datasets/COCO/coco2017_forge_combine_sp/train2017_mask"]
+
+    CM_DATASET_NAME_LIST = ["CASIA1", "CASIA2", "CoMoFoD", "COVERAGE", "COCO"]
+    CM_IMG_DIR_LIST = [r"/media/ian/WD/datasets/CASIA/CASIA 1.0 dataset/Modified Tp/Tp/CM",
+                       r"/media/ian/WD/datasets/CASIA/CASIA2.0_revised/CM_Tp",
+                       r"/media/ian/WD/datasets/CoMoFoD/FORGE",
+                       r"/media/ian/WD/datasets/COVERAGE/new_forge",
+                       r"/media/ian/WD/datasets/COCO/coco2017_forge_combine_cm/train2017"]
+    CM_MASK_DIR_LIST = [r"/media/ian/WD/datasets/CASIA/CASIA 1.0 dataset/Modified Tp/Tp/CM_mask",
+                        r"/media/ian/WD/datasets/CASIA/CASIA2.0_revised/CM_MASK",
+                        r"/media/ian/WD/datasets/CoMoFoD/MASK",
+                        r"/media/ian/WD/datasets/COVERAGE/new_mask",
+                        r"/media/ian/WD/datasets/COCO/coco2017_forge_combine_cm/train2017_mask"]
+    FINAL_IMG_DIR = r"/media/ian/WD/datasets/forge_combine/forge"
+    FINAL_MSK_DIR = r"/media/ian/WD/datasets/forge_combine/mask"
     ##############################################################################################################################
-    SP_IMG_DIR_LIST = [r"/media/ian/WD/datasets/COCO/coco2017_big_forge_spliced/train2017", ]
-    SP_MASK_DIR_LIST = [r"/media/ian/WD/datasets/COCO/coco2017_big_forge_spliced/train2017_mask", ]
-    CM_IMG_DIR_LIST = [r"/media/ian/WD/datasets/COCO/coco2017_big_forge_copymove/train2017", ]
-    CM_MASK_DIR_LIST = [r"/media/ian/WD/datasets/COCO/coco2017_big_forge_copymove/train2017_mask", ]
-    FINAL_IMG_DIR = r"/media/ian/WD/datasets/big_coco_forge/images"
-    FINAL_MSK_DIR = r"/media/ian/WD/datasets/big_coco_forge/masks"
+    # SP_IMG_DIR_LIST = [r"/media/ian/WD/datasets/COCO/coco2017_big_forge_spliced/train2017", ]
+    # SP_MASK_DIR_LIST = [r"/media/ian/WD/datasets/COCO/coco2017_big_forge_spliced/train2017_mask", ]
+    # CM_IMG_DIR_LIST = [r"/media/ian/WD/datasets/COCO/coco2017_big_forge_copymove/train2017", ]
+    # CM_MASK_DIR_LIST = [r"/media/ian/WD/datasets/COCO/coco2017_big_forge_copymove/train2017_mask", ]
+    # FINAL_IMG_DIR = r"/media/ian/WD/datasets/big_coco_forge/images"
+    # FINAL_MSK_DIR = r"/media/ian/WD/datasets/big_coco_forge/masks"
+    ##############################################################################################################################
 
     if not os.path.exists(FINAL_IMG_DIR):
         os.makedirs(FINAL_IMG_DIR)
@@ -373,7 +383,6 @@ def combine_multiple_dataset():
         os.makedirs(FINAL_MSK_DIR)
     for type in TYPE:
         if type == "SP":
-            print("")
             for i in range(len(SP_IMG_DIR_LIST)):
                 forge_list = [f for f in os.listdir(SP_IMG_DIR_LIST[i])]
                 mask_list = [f for f in os.listdir(SP_MASK_DIR_LIST[i])]
@@ -394,18 +403,34 @@ def combine_multiple_dataset():
                     tmp2 = os.path.splitext(os.path.basename(max_filename))[1]
                     count = int(tmp1) + 1
                 idx = 0
-                for j in range(len(forge_list)):
+                for j in tqdm(range(len(forge_list))):
                     img_file = forge_list[j]
                     msk_file = mask_list[j]
                     filename = os.path.splitext(os.path.basename(img_file))[0]
                     file_ext = os.path.splitext(os.path.basename(img_file))[1]
-                    copyfile(os.path.join(SP_IMG_DIR_LIST[i], img_file),
-                             os.path.join(FINAL_IMG_DIR, "{}{}".format(f'{idx + count:06}', file_ext)))
-                    copyfile(os.path.join(SP_MASK_DIR_LIST[i], msk_file),
-                             os.path.join(FINAL_MSK_DIR, "{}{}".format(f'{idx + count:06}', file_ext)))
+                    img_cv = cv2.imread(os.path.join(SP_IMG_DIR_LIST[i], img_file), cv2.IMREAD_COLOR)
+                    mask_cv = cv2.imread(os.path.join(SP_MASK_DIR_LIST[i], msk_file), cv2.IMREAD_GRAYSCALE)
+                    _, mask_cv = cv2.threshold(mask_cv, 127, 255, cv2.THRESH_BINARY)
+
+                    img_h, img_w, _ = img_cv.shape
+                    msk_h, msk_w = mask_cv.shape
+                    # assert img_h == msk_h and img_w == msk_w, "image {} got mismatch with mask".format(os.path.join(SP_IMG_DIR_LIST[i], img_file))
+                    if img_h != msk_h or img_w != msk_w:
+                        mask_cv = cv2.resize(mask_cv, (img_w, img_h))
+
+                    cv2.imwrite(os.path.join(FINAL_IMG_DIR, "{}{}".format(f'{idx + count:06}', '.jpg')), img_cv)
+                    cv2.imwrite(os.path.join(FINAL_MSK_DIR, "{}{}".format(f'{idx + count:06}', '.png')), mask_cv)
+
+                    worksheet.write('A{}'.format(xml_idx), "{}{}".format(f'{idx + count:06}', '.jpg'))
+                    worksheet.write('B{}'.format(xml_idx), os.path.join(SP_IMG_DIR_LIST[i], img_file))
+                    worksheet.write('C{}'.format(xml_idx), 'sp')
+                    xml_idx += 1
+                    # copyfile(os.path.join(SP_IMG_DIR_LIST[i], img_file),
+                    #          os.path.join(FINAL_IMG_DIR, "{}{}".format(f'{idx + count:06}', file_ext)))
+                    # copyfile(os.path.join(SP_MASK_DIR_LIST[i], msk_file),
+                    #          os.path.join(FINAL_MSK_DIR, "{}{}".format(f'{idx + count:06}', file_ext)))
                     idx += 1
         elif type == "CM":
-            print("")
             for i in range(len(CM_IMG_DIR_LIST)):
                 forge_list = [f for f in os.listdir(CM_IMG_DIR_LIST[i])]
                 mask_list = [f for f in os.listdir(CM_MASK_DIR_LIST[i])]
@@ -427,16 +452,60 @@ def combine_multiple_dataset():
                     tmp2 = os.path.splitext(os.path.basename(max_filename))[1]
                     count = int(tmp1) + 1
                 idx = 0
-                for j in range(len(forge_list)):
+                for j in tqdm(range(len(forge_list))):
                     img_file = forge_list[j]
                     msk_file = mask_list[j]
                     filename = os.path.splitext(os.path.basename(img_file))[0]
                     file_ext = os.path.splitext(os.path.basename(img_file))[1]
-                    copyfile(os.path.join(CM_IMG_DIR_LIST[i], img_file),
-                             os.path.join(FINAL_IMG_DIR, "{}{}".format(f'{idx + count:06}', file_ext)))
-                    copyfile(os.path.join(CM_MASK_DIR_LIST[i], msk_file),
-                             os.path.join(FINAL_MSK_DIR, "{}{}".format(f'{idx + count:06}', file_ext)))
+
+                    img_cv = cv2.imread(os.path.join(CM_IMG_DIR_LIST[i], img_file), cv2.IMREAD_COLOR)
+                    mask_cv = cv2.imread(os.path.join(CM_MASK_DIR_LIST[i], msk_file), cv2.IMREAD_GRAYSCALE)
+                    _, mask_cv = cv2.threshold(mask_cv, 127, 255, cv2.THRESH_BINARY)
+
+                    img_h, img_w, _ = img_cv.shape
+                    msk_h, msk_w = mask_cv.shape
+                    # assert img_h == msk_h and img_w == msk_w, "image {} got mismatch with mask".format(os.path.join(SP_IMG_DIR_LIST[i], img_file))
+                    if img_h != msk_h or img_w != msk_w:
+                        mask_cv = cv2.resize(mask_cv, (img_w, img_h))
+
+                    cv2.imwrite(os.path.join(FINAL_IMG_DIR, "{}{}".format(f'{idx + count:06}', '.jpg')), img_cv)
+                    cv2.imwrite(os.path.join(FINAL_MSK_DIR, "{}{}".format(f'{idx + count:06}', '.png')), mask_cv)
+
+                    worksheet.write('A{}'.format(xml_idx), "{}{}".format(f'{idx + count:06}', '.jpg'))
+                    worksheet.write('B{}'.format(xml_idx), os.path.join(CM_MASK_DIR_LIST[i], img_file))
+                    worksheet.write('C{}'.format(xml_idx), 'cm')
+                    xml_idx += 1
+
+                    # copyfile(os.path.join(CM_IMG_DIR_LIST[i], img_file),
+                    #          os.path.join(FINAL_IMG_DIR, "{}{}".format(f'{idx + count:06}', file_ext)))
+                    # copyfile(os.path.join(CM_MASK_DIR_LIST[i], msk_file),
+                    #          os.path.join(FINAL_MSK_DIR, "{}{}".format(f'{idx + count:06}', file_ext)))
                     idx += 1
+    workbook.close()
+
+
+def find_all_black_mask(dirs):
+    for sub_dir in dirs:
+        masks = glob.glob(os.path.join(sub_dir, "*.jpg"))
+        for mask in masks:
+            mask_cv = cv2.imread(mask, cv2.IMREAD_GRAYSCALE)
+            _, thresh = cv2.threshold(mask_cv, 127, 255, cv2.THRESH_BINARY)
+            unique_val = np.unique(thresh)
+            if len(unique_val) <= 1:
+                print("mask: {} got one value".format(mask))
+            elif len(unique_val) > 2:
+                print("mask: {} got more than two value".format( mask))
+
+
+def find_img_with_4_channel(dirs):
+    for sub_dir in dirs:
+        imgs = glob.glob(os.path.join(sub_dir, "*.*"))
+        print("\nsearch {}\n".format(sub_dir))
+        for img in tqdm(imgs):
+            im_cv = cv2.imread(img, cv2.IMREAD_COLOR)
+            height, width, channels = im_cv.shape
+            if channels != 3:
+                print("image: {}, got {} channels".format(img, channels))
 
 
 def devide_dataset_to_small_patches(images_dir, masks_dir, new_dir):
@@ -600,6 +669,14 @@ if __name__ == '__main__':
     # get_COMOFOD()
     # get_COVERAGE()
     # combine_multiple_dataset()
+
+    # DATASETS_DIR = r'/media/ian/WD/datasets'
+    # img_folder = os.path.join(DATASETS_DIR, 'forge_combine', 'forge')
+    # gt_folder = os.path.join(DATASETS_DIR, 'forge_combine', 'mask')
+    # split_folder = os.path.join(DATASETS_DIR, 'forge_combine', 'split')
+    # split_train_test(img_folder, gt_folder, split_folder)
+
+    find_all_black_mask(['/media/ian/WD/datasets/forge_combine/test_masks'])
     ######################################################################################
     # #測試x是否存在在item中
     # x = 'aaa'
@@ -649,9 +726,9 @@ if __name__ == '__main__':
     ######################################################################################
     # move_casia_masks(
     #     str(DATASET_ROOT.joinpath('CASIA2', 'total', 'images')), str(DATASET_ROOT.joinpath('CASIA2', 'total', 'masks')))
-    split_train_test(str(DATASET_ROOT.joinpath('CASIA2', 'total', 'images')),
-                     str(DATASET_ROOT.joinpath('CASIA2', 'total', 'masks')),
-                         str(DATASET_ROOT.joinpath('CASIA2', 'split')))
+    # split_train_test(str(DATASET_ROOT.joinpath('CASIA2', 'total', 'images')),
+    #                  str(DATASET_ROOT.joinpath('CASIA2', 'total', 'masks')),
+    #                  str(DATASET_ROOT.joinpath('CASIA2', 'split')))
     ######################################################################################
     # img = cv2.imread(str(DATASET_ROOT.joinpath('CASIA2', 'SP_Tp', 'Tp_D_CND_M_N_ani00018_sec00096_00138.tif')))
     # cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
@@ -663,3 +740,37 @@ if __name__ == '__main__':
     # cv2.waitKey()
     # cv2.destroyWindow('img')
     # print('')
+    ######################################################################################
+    # check any mask got all black
+
+    # SP_IMG_DIR_LIST = [r"/media/ian/WD/datasets/CASIA/CASIA 1.0 dataset/Modified Tp/Tp/Sp",
+    #                    r"/media/ian/WD/datasets/CASIA/CASIA2.0_revised/SP_Tp",
+    #                    r"/media/ian/WD/datasets/COCO/coco2017_forge_combine_sp/train2017"]
+    # SP_MASK_DIR_LIST = [r"/media/ian/WD/datasets/CASIA/CASIA 1.0 dataset/Modified Tp/Tp/Sp_mask",
+    #                     r"/media/ian/WD/datasets/CASIA/CASIA2.0_revised/SP_MASK",
+    #                     r"/media/ian/WD/datasets/COCO/coco2017_forge_combine_sp/train2017_mask"]
+    #
+    # CM_DATASET_NAME_LIST = ["CASIA1", "CASIA2", "CoMoFoD", "COVERAGE", "COCO"]
+    # CM_IMG_DIR_LIST = [r"/media/ian/WD/datasets/CASIA/CASIA 1.0 dataset/Modified Tp/Tp/CM",
+    #                    r"/media/ian/WD/datasets/CASIA/CASIA2.0_revised/CM_Tp",
+    #                    r"/media/ian/WD/datasets/CoMoFoD/FORGE",
+    #                    r"/media/ian/WD/datasets/COVERAGE/new_forge",
+    #                    r"/media/ian/WD/datasets/COCO/coco2017_forge_combine_cm/train2017"]
+    # CM_MASK_DIR_LIST = [r"/media/ian/WD/datasets/CASIA/CASIA 1.0 dataset/Modified Tp/Tp/CM_mask",
+    #                     r"/media/ian/WD/datasets/CASIA/CASIA2.0_revised/CM_MASK",
+    #                     r"/media/ian/WD/datasets/CoMoFoD/MASK",
+    #                     r"/media/ian/WD/datasets/COVERAGE/new_mask",
+    #                     r"/media/ian/WD/datasets/COCO/coco2017_forge_combine_cm/train2017_mask"]
+    # check_list = SP_IMG_DIR_LIST + CM_IMG_DIR_LIST
+
+    ################################################################################################################################
+    ## chekc
+    # find_img_with_4_channel(check_list)
+    # tmp = cv2.imread(r"/media/ian/WD/datasets/CASIA/CASIA 1.0 dataset/Modified Tp/Tp/CM_mask/Sp_S_CNN_A_nat0078_nat0078_0004.jpg", cv2.IMREAD_GRAYSCALE)
+    # cv2.imshow('tmp', tmp)
+    # print(np.unique(tmp))
+    # _, tmp = cv2.threshold(tmp, 127, 255, cv2.THRESH_BINARY)
+    # cv2.imshow('tmp2', tmp)
+    # cv2.waitKey()
+    # cv2.destroyWindow('tmp')
+    # print(np.unique(tmp))

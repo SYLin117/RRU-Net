@@ -36,7 +36,7 @@ image_index = []
 seg_index = []
 
 FORGE_TYPE = 'cm'
-gene_dir_path = os.sep.join([COCO_DIR, 'coco2017_new_{}'.format(FORGE_TYPE)])
+gene_dir_path = os.sep.join([COCO_DIR, 'coco2017_forge_combine_{}'.format(FORGE_TYPE)])
 gene_train_image_path = os.sep.join([gene_dir_path, 'train2017'])
 gene_val_image_path = os.sep.join([gene_dir_path, 'val2017'])
 gene_test_image_path = os.sep.join([gene_dir_path, 'test2017'])
@@ -49,9 +49,9 @@ COCO_TEST = 'test'
 COCO_VAL = 'val'
 
 # DATASET_SIZE = int(len(image_index) / 2)
-DATASET_SIZE = 10000
+DATASET_SIZE = 2650
 LOOP_CNT = 10
-OVERLAP_CNT = 10
+OVERLAP_CNT = 100
 
 
 def random_seg_idx():
@@ -98,11 +98,19 @@ def find_obj_vertex(mask):
 #     root.append(new_obj)
 #     tree.write(savefile)
 
-def train_val_test():
+def train_val_test(percent=0):
+    """
+
+    Args:
+        percent: val, test percent(ex: 0.1 means 10%)
+
+    Returns:
+
+    """
     a = randint(1, 100)
-    if a <= 10:
+    if a <= percent * 100:
         return COCO_TEST  # test
-    elif 0 < a <= 20:
+    elif 0 < a <= percent * 200:
         return COCO_VAL  # val
     else:
         return COCO_TRAIN  # train
@@ -263,8 +271,9 @@ if __name__ == '__main__':
                             (max_y - min_y > img_pil.height)):
                         continue
 
-                    mask = np.stack((mask2, mask2, mask2), axis=2)
-                    mask_pil = Image.fromarray(mask2 * 255).convert('L')
+                    # mask = np.stack((mask2, mask2, mask2), axis=2)
+                    mask = np.stack((mask2,) * 3, axis=-1)
+                    mask_pil = Image.fromarray(np.uint8(mask2 * 255)).convert('L')
                     # seg_img_rgb = cv2.cvtColor(seg_img, cv2.COLOR_BGR2RGB)
                     seg_img_pil = Image.fromarray(seg_img)
 
@@ -274,7 +283,7 @@ if __name__ == '__main__':
                     # ---------------------------
                     # Random scale
                     # ---------------------------
-                    scale = random.uniform(0.4, 0.7)
+                    scale = random.uniform(0.3, 0.5)
                     w, h = int(w * scale), int(h * scale)
                     crop_obj = crop_obj.resize((w, h), resample=Image.BILINEAR)
                     crop_mask = crop_mask.resize((w, h), resample=Image.BILINEAR)
@@ -318,10 +327,10 @@ if __name__ == '__main__':
                             boxA = [min_x, min_y, max_x, max_y]  # original
                             boxB = [loc_x, loc_y, loc_x + w, loc_y + h]  # new location
                             overlap = bb_intersection_over_union(boxA, boxB)
-                            if overlap < 0.05:
+                            if overlap < 0.01:
                                 new_loc_valid = True
                             else:
-                                print('new location got overlap:{}'.format(overlap))
+                                # print('new location got overlap:{}\n'.format(overlap))
                                 try_no += 1
                                 if try_no > OVERLAP_CNT:
                                     break
